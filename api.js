@@ -54,7 +54,11 @@ const loginUser = ({ user, otp, redirect }) => {
     userInfo.otp.hash = otp
     return userInfo
   }).catch((err) => {
-    _db.close()
+    try {
+      _db.close()
+    } catch(err) {
+      // ignore this
+    }
     throw err
   })
 }
@@ -129,7 +133,11 @@ const verifyUser = ({ user, otp }) => {
       redirect: _redirect
     }
   }).catch((err) => {
-    _db.close()
+    try {
+      _db.close()
+    } catch(err) {
+      // ignore this
+    }
     throw err
   })
 }
