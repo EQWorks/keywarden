@@ -151,7 +151,7 @@ module.exports.login = (event, context, callback) => {
   const { user, redirect } = event.queryStringParameters || {}
   if (!user) {
     return callback(null, {
-      statusCode: err.statusCode || 400,
+      statusCode: 400,
       body: JSON.stringify({
         message: 'Missing `user` in query string parameters'
       })
@@ -191,7 +191,7 @@ module.exports.verify = (event, context, callback) => {
   const { user, otp } = event.queryStringParameters || {}
   if (!user) {
     return callback(null, {
-      statusCode: err.statusCode || 400,
+      statusCode: 400,
       body: JSON.stringify({
         message: 'Missing `user` in query string parameters'
       })
@@ -199,7 +199,7 @@ module.exports.verify = (event, context, callback) => {
   }
   if (!otp) {
     return callback(null, {
-      statusCode: err.statusCode || 400,
+      statusCode: 400,
       body: JSON.stringify({
         message: 'Missing `otp` in query string parameters'
       })
