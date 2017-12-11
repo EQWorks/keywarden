@@ -149,6 +149,14 @@ module.exports.login = (event, context, callback) => {
   // `redirect` is used for signaling requesting application
   // which URI to redirect to after /verify successfully
   const { user, redirect } = event.queryStringParameters || {}
+  if (!user) {
+    return callback(null, {
+      statusCode: err.statusCode || 400,
+      body: JSON.stringify({
+        message: 'Missing `user` in query string parameters'
+      })
+    })
+  }
   // origin and stage are used for composing the verify link
   const { origin } = event.headers || {}
   const { stage } = event.requestContext || {}
@@ -181,6 +189,22 @@ module.exports.login = (event, context, callback) => {
 // HTTP GET /verify
 module.exports.verify = (event, context, callback) => {
   const { user, otp } = event.queryStringParameters || {}
+  if (!user) {
+    return callback(null, {
+      statusCode: err.statusCode || 400,
+      body: JSON.stringify({
+        message: 'Missing `user` in query string parameters'
+      })
+    })
+  }
+  if (!otp) {
+    return callback(null, {
+      statusCode: err.statusCode || 400,
+      body: JSON.stringify({
+        message: 'Missing `otp` in query string parameters'
+      })
+    })
+  }
   verifyUser({ user, otp }).then((res) => {
     const { token, redirect } = res
     return callback(null, {
