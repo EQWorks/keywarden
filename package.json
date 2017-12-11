@@ -1,0 +1,21 @@
+{
+  "name": "keywarden",
+  "version": "0.1.0",
+  "description": "central login service",
+  "scripts": {
+    "lint": "eslint api.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.163.0",
+    "bcrypt": "^1.0.3",
+    "jsonwebtoken": "^8.1.0",
+    "luxon": "^0.2.7",
+    "mongodb": "^3.0.0-rc0",
+    "nodemailer": "^4.4.0"
+  },
+  "devDependencies": {
+    "eslint": "^4.13.0"
+  }
+}
