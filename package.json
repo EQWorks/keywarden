@@ -9,7 +9,7 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.163.0",
-    "bcrypt": "^1.0.3",
+    "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.1.0",
     "luxon": "^0.2.7",
     "mongodb": "^3.0.0-rc0",

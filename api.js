@@ -2,7 +2,7 @@
 * DO NOT modify this file directly on AWS Lambda console *
 *********************************************************/
 const jwt = require('jsonwebtoken')
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcryptjs')
 const { DateTime } = require('luxon')
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
