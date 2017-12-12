@@ -139,21 +139,21 @@ const verifyUser = ({ user, otp }) => {
       err.statusCode = 403
       throw err
     }
-    // "upsert" an uuid (v4, random) to user profile to be encoded
-    // together with JWT so that it can be used as an effective
-    // invalidation mechanism
+    // unset otp
+    const updates = {
+      $unset: { otp: '' }
+    }
+    // set `jwt_uuid` if not set already
     if (!_userInfo.jwt_uuid) {
       _userInfo.jwt_uuid = uuidv4()
-      return _col.updateOne({
-        email: user
-      }, {
-        $set: {
-          jwt_uuid: _userInfo.jwt_uuid
-        }
-      })
-    } else {
-      return true
+      updates['$set'] = {
+        jwt_uuid: _userInfo.jwt_uuid
+      }
     }
+    // update the user with desired updates
+    return _col.updateOne({
+      email: user
+    }, updates)
   }).then(() => {
     _client.close()
     // passcode checked, generate jwt and return
