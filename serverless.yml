@@ -21,6 +21,7 @@ provider:
   name: aws
   runtime: nodejs6.10
   timeout: 30
+  memorySize: 128
   environment:
     JWT_SECRET: ${file(./env.yml):JWT_SECRET}
     MONGO_URI: ${file(./env.yml):MONGO_URI}
