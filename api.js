@@ -119,7 +119,6 @@ const verifyUser = ({ user, otp }) => {
   }).then((doc) => {
     _client.close()
     // carve out email and api_access for later signing
-    console.log(JSON.stringify(doc))
     const { email, api_access } = doc
     _userInfo = { email, api_access }
     // otp verification
@@ -168,7 +167,8 @@ module.exports.login = (event, context, callback) => {
     })
   }
   // origin and stage are used for composing the verify link
-  const { origin } = event.headers || {}
+  const headers = event.headers || {}
+  const origin = `${headers['X-Forwarded-Proto']}://${headers.Host}`
   const { stage } = event.requestContext || {}
   // grab an otp
   const otp = getOtp()
