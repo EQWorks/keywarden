@@ -108,7 +108,7 @@ const verifyUser = ({ user, otp }) => {
     return _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL).findOne({
       email: user
     }, {
-      fields: {
+      projection: {
         _id: 0,
         email: 1,
         otp: 1,
@@ -116,13 +116,14 @@ const verifyUser = ({ user, otp }) => {
       },
       maxTimeMS: 15 * 1000 // give it half of the 30 sec total limit
     })
-  }).then((r) => {
+  }).then((doc) => {
     _client.close()
     // carve out email and api_access for later signing
-    const { email, api_access } = r.value
+    console.log(JSON.stringify(doc))
+    const { email, api_access } = doc
     _userInfo = { email, api_access }
     // otp verification
-    const _otp = r.value.otp || {}
+    const _otp = doc.otp || {}
     _redirect = _otp.redirect
     if (DateTime.utc().valueOf() < _otp.ttl) {
       const err = new Error('Passcode has expired')
