@@ -3,6 +3,7 @@
 *********************************************************/
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
+const uuidv4 = require('uuid/v4')
 const { DateTime } = require('luxon')
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
@@ -102,25 +103,28 @@ const verifyUser = ({ user, otp }) => {
   let _client
   let _userInfo
   let _redirect
+  let _col
   // find user with otp hash
   return MongoClient.connect(MONGO_URI).then((client) => {
     _client = client
-    return _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL).findOne({
+    _col = _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL)
+    return _col.findOne({
       email: user
     }, {
       projection: {
         _id: 0,
         email: 1,
         otp: 1,
-        api_access: 1
+        api_access: 1,
+        jwt_uuid: 1
       },
       maxTimeMS: 15 * 1000 // give it half of the 30 sec total limit
     })
   }).then((doc) => {
     _client.close()
     // carve out email and api_access for later signing
-    const { email, api_access } = doc
-    _userInfo = { email, api_access }
+    const { email, api_access, jwt_uuid } = doc
+    _userInfo = { email, api_access, jwt_uuid }
     // otp verification
     const _otp = doc.otp || {}
     _redirect = _otp.redirect
@@ -136,6 +140,22 @@ const verifyUser = ({ user, otp }) => {
       err.statusCode = 403
       throw err
     }
+    // "upsert" an uuid (v4, random) to user profile to be encoded
+    // together with JWT so that it can be used as an effective
+    // invalidation mechanism
+    if (!_userInfo.jwt_uuid) {
+      _userInfo.jwt_uuid = uuidv4()
+      return _col.updateOne({
+        email: user
+      }, {
+        $set: {
+          jwt_uuid: _userInfo.jwt_uuid
+        }
+      })
+    } else {
+      return true
+    }
+  }).then(() => {
     // passcode checked, generate jwt and return
     return {
       token: jwt.sign(_userInfo, JWT_SECRET),

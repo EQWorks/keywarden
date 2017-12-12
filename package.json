@@ -13,7 +13,8 @@
     "jsonwebtoken": "^8.1.0",
     "luxon": "^0.2.7",
     "mongodb": "^3.0.0-rc0",
-    "nodemailer": "^4.4.0"
+    "nodemailer": "^4.4.0",
+    "uuid": "^3.1.0"
   },
   "devDependencies": {
     "eslint": "^4.13.0"
