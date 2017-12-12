@@ -48,7 +48,8 @@ const loginUser = ({ user, otp, redirect }) => {
     })
   }).then((r) => {
     _client.close()
-    const { email, _otp } = r.value
+    const email = r.value.email
+    const _otp = r.value.otp || {}
     _otp.ttl = DateTime.fromMillis(
       _otp.ttl,
       { zone: 'utc' }
@@ -115,10 +116,10 @@ const verifyUser = ({ user, otp }) => {
   }).then((r) => {
     _client.close()
     // carve out email and api_access for later signing
-    let { email, api_access, _otp } = r.value
+    const { email, api_access } = r.value
     _userInfo = { email, api_access }
     // otp verification
-    _otp = _otp || {}
+    const _otp = r.value.otp || {}
     _redirect = _otp.redirect
     if (DateTime.utc().valueOf() < _otp.ttl) {
       const err = new Error('Passcode has expired')
