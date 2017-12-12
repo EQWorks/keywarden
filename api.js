@@ -92,9 +92,6 @@ const sendOtp = ({ userInfo, origin, stage }) => {
       <p>You have until <strong>${ttl}</strong> before it expires, and all previous passcodes are now invalid</p>
     `
   }
-  // if (stage === 'dev') {
-  //   return message
-  // }
   return nodemailer.createTransport({ SES: new AWS.SES() }).sendMail(message)
 }
 
@@ -132,7 +129,7 @@ const verifyUser = ({ user, otp }) => {
       err.statusCode = 403
       throw err
     }
-    return bcrypt.compare(otp, _otp.hash)
+    return bcrypt.compare(otp, _otp.hash || '')
   }).then((res) => {
     if (!res) {
       const err = new Error('Invalid passcode')
