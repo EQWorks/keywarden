@@ -31,8 +31,8 @@ provider:
     securityGroupIds:
       - sg-081b437d # api-gateway-dc
     subnetIds:
-      - subnet-9b1927d3 # EQ-DC-Tunnel Public 1A
-      - subnet-c9226493 # EQ-DC-Tunnel Public 1B
+      - subnet-b59ae9fe # EQ-DC-Lambda Public 1A
+      - subnet-df12bb82 # EQ-DC-Lambda Public 1B
   iamRoleStatements:
     - Effect: Allow
       Action:
