@@ -124,7 +124,7 @@ const verifyUser = ({ user, otp }) => {
     // otp verification
     const _otp = doc.otp || {}
     _redirect = _otp.redirect
-    if (DateTime.utc().valueOf() < _otp.ttl) {
+    if (DateTime.utc().valueOf() >= _otp.ttl) {
       const err = new Error('Passcode has expired')
       err.statusCode = 403
       throw err
