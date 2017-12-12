@@ -121,7 +121,6 @@ const verifyUser = ({ user, otp }) => {
       maxTimeMS: 15 * 1000 // give it half of the 30 sec total limit
     })
   }).then((doc) => {
-    _client.close()
     // carve out email and api_access for later signing
     const { email, api_access, jwt_uuid } = doc
     _userInfo = { email, api_access, jwt_uuid }
@@ -156,6 +155,7 @@ const verifyUser = ({ user, otp }) => {
       return true
     }
   }).then(() => {
+    _client.close()
     // passcode checked, generate jwt and return
     return {
       token: jwt.sign(_userInfo, JWT_SECRET),
