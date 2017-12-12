@@ -11,7 +11,7 @@ const MongoClient = require('mongodb').MongoClient
 const JWT_SECRET = process.env.JWT_SECRET
 const MONGO_URI = process.env.MONGO_URI
 const MONGO_USER_COLL = process.env.MONGO_USER_COLL
-const OTP_TTL = process.env.OTP_TTL || (5 * 60 * 1000) // in ms
+const OTP_TTL = parseInt(process.env.OTP_TTL) || (5 * 60 * 1000) // in ms
 
 // one time passcode generator, by default 6-digit
 // NOTE: at most 16-digit (or up to Math.random() implementation)
