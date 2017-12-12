@@ -10,7 +10,8 @@ const MongoClient = require('mongodb').MongoClient
 
 const JWT_SECRET = process.env.JWT_SECRET
 const MONGO_URI = process.env.MONGO_URI
-const MONGO_USER_COLL = process.env.MONGO_USER_COLL
+const MONGO_USER_DB = process.env.MONGO_USER_DB || 'eqreporting'
+const MONGO_USER_COLL = process.env.MONGO_USER_COLL || 'equsers'
 const OTP_TTL = parseInt(process.env.OTP_TTL) || (5 * 60 * 1000) // in ms
 
 // one time passcode generator, by default 6-digit
@@ -20,13 +21,13 @@ const getOtp = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 // get user from datastore and set otp
 const loginUser = ({ user, otp, redirect }) => {
   redirect = redirect || null
-  let _db
+  let _client
   // find and update user with bcrypt'ed otp
-  return MongoClient.connect(MONGO_URI).then((db) => {
-    _db = db
+  return MongoClient.connect(MONGO_URI).then((client) => {
+    _client = client
     return bcrypt.hash(otp, 10)
   }).then((hash) => {
-    return _db.collection(MONGO_USER_COLL).findOneAndUpdate({
+    return _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL).findOneAndUpdate({
       email: user
     }, {
       $set: {
@@ -45,17 +46,21 @@ const loginUser = ({ user, otp, redirect }) => {
       maxTimeMS: 15 * 1000, // give it half of the 30 sec total limit
       returnOriginal: false
     })
-  }).then((userInfo) => {
-    _db.close()
-    userInfo.otp.ttl = DateTime.fromMillis(
-      userInfo.otp.ttl,
+  }).then((r) => {
+    _client.close()
+    const { email, _otp } = r.value
+    _otp.ttl = DateTime.fromMillis(
+      _otp.ttl,
       { zone: 'utc' }
     ).toLocaleString(DateTime.DATETIME_FULL_WITH_SECONDS)
-    userInfo.otp.hash = otp
-    return userInfo
+    _otp.passcode = otp // assign plaintext value
+    return {
+      email,
+      otp: _otp
+    }
   }).catch((err) => {
     try {
-      _db.close()
+      _client.close()
     } catch(err) {
       // ignore this
     }
@@ -65,7 +70,7 @@ const loginUser = ({ user, otp, redirect }) => {
 
 // send email with otp
 const sendOtp = ({ userInfo, origin, stage }) => {
-  const otp = userInfo.otp.hash
+  const otp = userInfo.otp.passcode // the plaintext version is only available from loginUser()
   const ttl = userInfo.otp.ttl
   const transporter = nodemailer.createTransport({ SES: new AWS.SES() })
   const magicLink = `${origin}/${stage}/verify?user=${userInfo.email}&otp=${otp}`
@@ -77,26 +82,26 @@ const sendOtp = ({ userInfo, origin, stage }) => {
       Welcome to EQ Works\n
       Please login with the Magic Link ${magicLink}\n
       Or manually enter: ${otp}\n
-      You have until ${ttl} before it expires
+      You have until ${ttl} before it expires, and all previous passcodes are now invalid
     `,
     html: `
       <h3>Welcome to EQ Works</h3>
       <p>Login with the <a href="${magicLink}">Magic Link</a></p>
       <p>Or manually enter: <strong>${otp}</strong></p>
-      <p>You have until <strong>${ttl}</strong> before it expires</p>
+      <p>You have until <strong>${ttl}</strong> before it expires, and all previous passcodes are now invalid</p>
     `
   })
 }
 
 // get user from datastore and verify otp
 const verifyUser = ({ user, otp }) => {
-  let _db
+  let _client
   let _userInfo
   let _redirect
   // find user with otp hash
-  return MongoClient.connect(MONGO_URI).then((db) => {
-    _db = db
-    return db.collection(MONGO_USER_COLL).findOne({
+  return MongoClient.connect(MONGO_URI).then((client) => {
+    _client = client
+    return _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL).findOne({
       email: user
     }, {
       fields: {
@@ -107,20 +112,20 @@ const verifyUser = ({ user, otp }) => {
       },
       maxTimeMS: 15 * 1000 // give it half of the 30 sec total limit
     })
-  }).then((userInfo) => {
-    _db.close()
+  }).then((r) => {
+    _client.close()
     // carve out email and api_access for later signing
-    const { email, api_access } = userInfo
+    let { email, api_access, _otp } = r.value
     _userInfo = { email, api_access }
     // otp verification
-    userInfo.otp = userInfo.otp || {}
-    _redirect = userInfo.otp.redirect
-    if (DateTime.utc().valueOf() < userInfo.otp.ttl) {
+    _otp = _otp || {}
+    _redirect = _otp.redirect
+    if (DateTime.utc().valueOf() < _otp.ttl) {
       const err = new Error('Passcode has expired')
       err.statusCode = 403
       throw err
     }
-    return bcrypt.compare(otp, userInfo.otp.hash)
+    return bcrypt.compare(otp, _otp.hash)
   }).then((res) => {
     if (!res) {
       const err = new Error('Invalid passcode')
@@ -134,7 +139,7 @@ const verifyUser = ({ user, otp }) => {
     }
   }).catch((err) => {
     try {
-      _db.close()
+      _client.close()
     } catch(err) {
       // ignore this
     }

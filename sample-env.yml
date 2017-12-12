@@ -1,5 +1,6 @@
 # copy this to env.yml and change values to be effective
 JWT_SECRET:
 MONGO_URI:
+MONGO_USER_DB:
 MONGO_USER_COLL:
 OTP_TTL:
