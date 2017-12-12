@@ -69,13 +69,12 @@ const loginUser = ({ user, otp, redirect }) => {
   })
 }
 
-// test send
-const sendOtp_test = ({ userInfo, origin, stage }) => {
+// send email with otp
+const sendOtp = ({ userInfo, origin, stage }) => {
   const otp = userInfo.otp.passcode // the plaintext version is only available from loginUser()
   const ttl = userInfo.otp.ttl
-  const transporter = nodemailer.createTransport({ SES: new AWS.SES() })
   const magicLink = `${origin}/${stage}/verify?user=${userInfo.email}&otp=${otp}`
-  return {
+  const message = {
     from: 'dev@eqworks.com',
     to: userInfo.email,
     subject: 'EQ Works Login Passcode',
@@ -92,31 +91,10 @@ const sendOtp_test = ({ userInfo, origin, stage }) => {
       <p>You have until <strong>${ttl}</strong> before it expires, and all previous passcodes are now invalid</p>
     `
   }
-})
-
-// send email with otp
-const sendOtp = ({ userInfo, origin, stage }) => {
-  const otp = userInfo.otp.passcode // the plaintext version is only available from loginUser()
-  const ttl = userInfo.otp.ttl
-  const transporter = nodemailer.createTransport({ SES: new AWS.SES() })
-  const magicLink = `${origin}/${stage}/verify?user=${userInfo.email}&otp=${otp}`
-  return transporter.sendMail({
-    from: 'dev@eqworks.com',
-    to: userInfo.email,
-    subject: 'EQ Works Login Passcode',
-    text: `
-      Welcome to EQ Works\n
-      Please login with the Magic Link ${magicLink}\n
-      Or manually enter: ${otp}\n
-      You have until ${ttl} before it expires, and all previous passcodes are now invalid
-    `,
-    html: `
-      <h3>Welcome to EQ Works</h3>
-      <p>Login with the <a href="${magicLink}">Magic Link</a></p>
-      <p>Or manually enter: <strong>${otp}</strong></p>
-      <p>You have until <strong>${ttl}</strong> before it expires, and all previous passcodes are now invalid</p>
-    `
-  })
+  if (stage === 'dev') {
+    return message
+  }
+  return nodemailer.createTransport({ SES: new AWS.SES() }).sendMail(message)
 }
 
 // get user from datastore and verify otp
@@ -195,7 +173,7 @@ module.exports.login = (event, context, callback) => {
   const otp = getOtp()
   // get user and set its otp
   return loginUser({ user, otp, redirect }).then((userInfo) => {
-    return sendOtp_test({ userInfo, origin, stage })
+    return sendOtp({ userInfo, origin, stage })
   }).then((info) => {
     console.log(info)
     return callback(null, {
