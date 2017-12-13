@@ -10,6 +10,7 @@ const AWS = require('aws-sdk')
 const MongoClient = require('mongodb').MongoClient
 
 const JWT_SECRET = process.env.JWT_SECRET
+const JWT_TTL = parseInt(process.env.JWT_TTL) || (90 * 24 * 60 * 60) // in s
 const MONGO_URI = process.env.MONGO_URI
 const MONGO_USER_DB = process.env.MONGO_USER_DB || 'eqreporting'
 const MONGO_USER_COLL = process.env.MONGO_USER_COLL || 'equsers'
@@ -155,7 +156,7 @@ const verifyUser = ({ user, otp }) => {
     _client.close()
     // passcode checked, generate jwt and return
     return {
-      token: jwt.sign(_userInfo, JWT_SECRET),
+      token: jwt.sign(_userInfo, JWT_SECRET, { expiresIn: JWT_TTL }),
       redirect: _redirect
     }
   }).catch((err) => {
