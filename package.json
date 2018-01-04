@@ -1,10 +1,14 @@
 {
   "name": "keywarden",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "central login service",
   "scripts": {
     "lint": "eslint api.js",
     "deploy": "eslint api.js && sls deploy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EQWorks/keywarden.git"
   },
   "author": "",
   "license": "ISC",

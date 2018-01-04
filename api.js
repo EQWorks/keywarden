@@ -1,6 +1,8 @@
 /*********************************************************
 * DO NOT modify this file directly on AWS Lambda console *
 *********************************************************/
+const url = require('url')
+
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 const uuidv4 = require('uuid/v4')
@@ -21,8 +23,7 @@ const OTP_TTL = parseInt(process.env.OTP_TTL) || (5 * 60 * 1000) // in ms
 const getOtp = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 
 // get user from datastore and set otp
-const loginUser = ({ user, otp, redirect }) => {
-  redirect = redirect || null
+const loginUser = ({ user, otp }) => {
   let _client
   // find and update user with bcrypt'ed otp
   return MongoClient.connect(MONGO_URI).then((client) => {
@@ -35,8 +36,7 @@ const loginUser = ({ user, otp, redirect }) => {
       $set: {
         otp: {
           hash,
-          ttl: DateTime.utc().plus(OTP_TTL).valueOf(),
-          redirect
+          ttl: DateTime.utc().plus(OTP_TTL).valueOf()
         }
       }
     }, {
@@ -72,10 +72,18 @@ const loginUser = ({ user, otp, redirect }) => {
 }
 
 // send email with otp
-const sendOtp = ({ userInfo, origin, stage }) => {
+const sendOtp = ({ userInfo, redirect }) => {
   const otp = userInfo.otp.passcode // the plaintext version is only available from loginUser()
   const ttl = userInfo.otp.ttl
-  const magicLink = `${origin}/${stage}/verify?user=${userInfo.email}&otp=${otp}`
+  // use `url` to parse original redirect
+  const link = url.parse(redirect, true)
+  link.query = link.query || {} // force link.query to be available
+  Object.assign(link.query, { // add magic link query string params
+    user: userInfo.email,
+    otp
+  })
+  link.search = undefined // force search to be undfined to elevate link.query
+  const magicLink = url.format(link) // reconstruct into magicLink
   const message = {
     from: 'dev@eqworks.com',
     to: userInfo.email,
@@ -175,7 +183,7 @@ module.exports.login = (event, context, callback) => {
   // `user` is in the form of an email address
   // `redirect` is used for signaling requesting application
   // which URI to redirect to after /verify successfully
-  const { user, redirect } = event.queryStringParameters || {}
+  let { user, redirect } = event.queryStringParameters || {}
   if (!user) {
     return callback(null, {
       statusCode: 400,
@@ -191,8 +199,10 @@ module.exports.login = (event, context, callback) => {
   // grab an otp
   const otp = getOtp()
   // get user and set its otp
-  return loginUser({ user, otp, redirect }).then((userInfo) => {
-    return sendOtp({ userInfo, origin, stage })
+  return loginUser({ user, otp }).then((userInfo) => {
+    // default redirect back to keywarden for manual verification
+    redirect = redirect || `${origin}/${stage}/verify`
+    return sendOtp({ userInfo, redirect })
   }).then((info) => {
     console.log(info)
     return callback(null, {
