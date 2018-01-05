@@ -108,7 +108,6 @@ const sendOtp = ({ userInfo, redirect }) => {
 const verifyUser = ({ user, otp }) => {
   let _client
   let _userInfo
-  let _redirect
   let _col
   // find user with otp hash
   return MongoClient.connect(MONGO_URI).then((client) => {
@@ -132,7 +131,6 @@ const verifyUser = ({ user, otp }) => {
     _userInfo = { email, api_access, jwt_uuid }
     // otp verification
     const _otp = doc.otp || {}
-    _redirect = _otp.redirect
     if (DateTime.utc().valueOf() >= _otp.ttl) {
       const err = new Error('Passcode has expired')
       err.statusCode = 403
@@ -164,8 +162,7 @@ const verifyUser = ({ user, otp }) => {
     _client.close()
     // passcode checked, generate jwt and return
     return {
-      token: jwt.sign(_userInfo, JWT_SECRET, { expiresIn: JWT_TTL }),
-      redirect: _redirect
+      token: jwt.sign(_userInfo, JWT_SECRET, { expiresIn: JWT_TTL })
     }
   }).catch((err) => {
     try {
@@ -244,14 +241,13 @@ module.exports.verify = (event, context, callback) => {
     })
   }
   verifyUser({ user, otp }).then((res) => {
-    const { token, redirect } = res
+    const { token } = res
     return callback(null, {
       statusCode: 200,
       body: JSON.stringify({
         message: `User ${user} verified, please store and use the attached token responsibly`,
         user,
-        token, // this contains { email, api_access }
-        redirect
+        token // this contains { email, api_access }
       })
     })
   }).catch((err) => {

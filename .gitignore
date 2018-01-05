@@ -1,5 +1,6 @@
-env.yml
-env.yaml
+*env.yml
+*env.yaml
+!sample-env.yml
 
 # package directories
 node_modules
