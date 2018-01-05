@@ -1,8 +1,17 @@
 service: keywarden
 
+plugins:
+  - serverless-domain-manager
+
 custom:
   # this is [STAGE NAME]-env.yml, default to dev-env.yml
   envFile: ./${opt:stage, self:provider.stage}-env.yml
+  customDomain:
+    domainName: 'auth.eqworks.io'
+    basePath: '${opt:stage, self:provider.stage}'
+    stage: '${opt:stage, self:provider.stage}'
+    certificateName: '*.eqworks.io'
+    createRoute53Record: true
 
 provider:
   name: aws
