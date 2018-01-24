@@ -18,6 +18,15 @@ const MONGO_USER_DB = process.env.MONGO_USER_DB || 'eqreporting'
 const MONGO_USER_COLL = process.env.MONGO_USER_COLL || 'equsers'
 const OTP_TTL = parseInt(process.env.OTP_TTL) || (5 * 60 * 1000) // in ms
 
+const CORS_HEADERS = () => {
+  return {
+    // Required for CORS support to work
+    'Access-Control-Allow-Origin' : '*',
+    // Required for cookies, authorization headers with HTTPS
+    'Access-Control-Allow-Credentials' : true
+  }
+}
+
 // one time passcode generator, by default 6-digit
 // NOTE: at most 16-digit (or up to Math.random() implementation)
 const getOtp = (digit = 6) => String(Math.random()).substring(2, digit + 2)
@@ -184,6 +193,7 @@ module.exports.login = (event, context, callback) => {
   if (!user) {
     return callback(null, {
       statusCode: 400,
+      headers: CORS_HEADERS(),
       body: JSON.stringify({
         message: 'Missing `user` in query string parameters'
       })
@@ -204,6 +214,7 @@ module.exports.login = (event, context, callback) => {
     console.log(info)
     return callback(null, {
       statusCode: 200,
+      headers: CORS_HEADERS(),
       body: JSON.stringify({
         message: `Login passcode has been sent to ${user} through email`,
         user
@@ -213,6 +224,7 @@ module.exports.login = (event, context, callback) => {
     console.error(err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
+      headers: CORS_HEADERS(),
       body: JSON.stringify({
         message: `Unable to login user ${user} - ${err.message || 'server error'}`,
         user
@@ -227,6 +239,7 @@ module.exports.verify = (event, context, callback) => {
   if (!user) {
     return callback(null, {
       statusCode: 400,
+      headers: CORS_HEADERS(),
       body: JSON.stringify({
         message: 'Missing `user` in query string parameters'
       })
@@ -235,6 +248,7 @@ module.exports.verify = (event, context, callback) => {
   if (!otp) {
     return callback(null, {
       statusCode: 400,
+      headers: CORS_HEADERS(),
       body: JSON.stringify({
         message: 'Missing `otp` in query string parameters'
       })
@@ -244,6 +258,7 @@ module.exports.verify = (event, context, callback) => {
     const { token } = res
     return callback(null, {
       statusCode: 200,
+      headers: CORS_HEADERS(),
       body: JSON.stringify({
         message: `User ${user} verified, please store and use the attached token responsibly`,
         user,
@@ -254,6 +269,7 @@ module.exports.verify = (event, context, callback) => {
     console.error(err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
+      headers: CORS_HEADERS(),
       body: JSON.stringify({
         message: `Unable to verify user ${user} - ${err.message || 'server error'}`
       })
