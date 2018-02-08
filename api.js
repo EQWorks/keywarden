@@ -17,7 +17,6 @@ const MONGO_URI = process.env.MONGO_URI
 const MONGO_USER_DB = process.env.MONGO_USER_DB || 'eqreporting'
 const MONGO_USER_COLL = process.env.MONGO_USER_COLL || 'equsers'
 const OTP_TTL = parseInt(process.env.OTP_TTL) || (5 * 60 * 1000) // in ms
-AWS.config.update({region:'us-east-1'});
 
 const CORS_HEADERS = () => {
   return {
