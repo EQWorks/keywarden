@@ -4,7 +4,8 @@
   "description": "central login service",
   "scripts": {
     "lint": "eslint api.js",
-    "deploy": "eslint api.js && sls deploy"
+    "deploy": "eslint api.js && sls deploy",
+    "start": "node api.js"
   },
   "repository": {
     "type": "git",
