@@ -101,7 +101,7 @@ const sendOtp = ({ userInfo, redirect }) => {
     text: `
       Welcome to EQ Works!\n
       Please login with the Magic Link ${magicLink}\n
-      Or manually enter: ${otp} in your broswer as the EQ verification code.\n
+      Or manually enter: ${otp} \n
       You have until ${ttl} before it expires, and all previous passcodes are now invalid.
     `,
     html: `
@@ -384,8 +384,8 @@ const sendOtp = ({ userInfo, redirect }) => {
                         <tr>
                           <td>
                             <h1>Welcome to EQ Works!</h1>
-                            <h2> Please login with the Magic Link or manually enter: <strong>${otp}</strong> in your broswer as the EQ verification code. </h2>
-                            <h3> The verification code will be expired after <strong>${ttl}</strong>, and all previous passcodes are now invalid. </h3>
+                            <h2> Please login with the Magic Link or manually enter: <strong>${otp}</strong> </h2>
+                            <h3> The passcode will expire after <strong>${ttl}</strong>, and all previous passcodes are now invalid. </h3>
                             <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                               <tbody>
                                 <tr>
