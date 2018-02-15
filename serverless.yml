@@ -75,5 +75,7 @@ functions:
           method: get
           request:
             parameters:
+              querystrings:
+                light: false
               headers:
                 eq-api-jwt: true

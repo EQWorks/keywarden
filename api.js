@@ -323,6 +323,7 @@ module.exports.confirm = (event, context, callback) => {
   // light version of confirming user JWT validity and integrity
   const headers = event.headers || {}
   const token = headers['eq-api-jwt']
+  const { light } = event.queryStringParameters || {}
   let userInfo
   // preliminary jwt verify
   try {
@@ -347,7 +348,17 @@ module.exports.confirm = (event, context, callback) => {
       })
     })
   }
-  // payload integrity check against mongodb
+  // light confirmation requested, no need to check user integrity against db
+  if (~['1', 'true'].indexOf((light || '').toLowerCase())) {
+    return callback(null, {
+      statusCode: 200,
+      headers: CORS_HEADERS(),
+      body: JSON.stringify({
+        message: `Token confirmed for user: ${userInfo.email} (light)`
+      })
+    })
+  }
+  // payload integrity check against db
   confirmUser(userInfo).then((result) => {
     if (!result) {
       return callback(null, {
