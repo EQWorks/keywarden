@@ -97,15 +97,15 @@ const sendOtp = ({ userInfo, redirect }) => {
   const message = {
     from: 'dev@eqworks.com',
     to: userInfo.email,
-    subject: 'EQ Works Login Passcode',
+    subject: 'EQ Works Login Authentication ',
     text: `
       Welcome to EQ Works!\n
-      Please login with the Magic Link ${magicLink}\n
+      Please login with the magic link ${magicLink}\n
       Or manually enter: ${otp} \n
-      You have until ${ttl} before it expires, and all previous passcodes are now invalid.
+      This will exprie after ${ttl}, and all previous email should be discarded.
     `,
     html: `
-      <head>
+     <head>
         <style>
           /* -------------------------------------
               GLOBAL RESETS
@@ -207,14 +207,24 @@ const sendOtp = ({ userInfo, redirect }) => {
             }
           h2 {
             font-size: 20px;
-            font-weight: 400;
+            font-weight: 300;
             color:#3a3a3a;
+            text-align: center;
             }
           h3 {
             font-size: 15px;
             font-weight: 300;
             color:#3a3a3a;
+            line-height: 1.4;
+            text-align: center;
             }
+          h4 {
+            font-size: 12px;
+            color: #999999;
+            text-align: center; 
+            width: 60%;
+            margin: 0 auto;
+          }
 
           p,
           ul,
@@ -223,7 +233,7 @@ const sendOtp = ({ userInfo, redirect }) => {
             font-size: 14px;
             font-weight: normal;
             margin: 0;
-            Margin-bottom: 15px; }
+            Margin-bottom: 0px; }
             p li,
             ul li,
             ol li {
@@ -239,7 +249,8 @@ const sendOtp = ({ userInfo, redirect }) => {
           ------------------------------------- */
           .btn {
             box-sizing: border-box;
-            width: 100%;}
+            width: 100%;
+            Margin-bottom: 30px;}
             .btn > tbody > tr > td {
               padding-bottom: 15px; }
             .btn table {
@@ -257,9 +268,9 @@ const sendOtp = ({ userInfo, redirect }) => {
               color: #6ba4f8;
               cursor: pointer;
               display: inline-block;
-              font-size: 14px;
+              font-size: 20px;
               font-weight: bold;
-              margin: 0;
+              margin:0;
               padding: 12px 25px;
               text-decoration: none;
               text-transform: capitalize; }
@@ -384,8 +395,6 @@ const sendOtp = ({ userInfo, redirect }) => {
                         <tr>
                           <td>
                             <h1>Welcome to EQ Works!</h1>
-                            <h2> Please login with the Magic Link or manually enter: <strong>${otp}</strong> </h2>
-                            <h3> The passcode will expire after <strong>${ttl}</strong>, and all previous passcodes are now invalid. </h3>
                             <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                               <tbody>
                                 <tr>
@@ -393,7 +402,7 @@ const sendOtp = ({ userInfo, redirect }) => {
                                     <table border="0" cellpadding="0" cellspacing="0">
                                       <tbody>
                                         <tr>
-                                          <td> <a href="${magicLink}" target="_blank">Magic Link</a> </td>
+                                          <td> <a href="${magicLink}" target="_blank">Sign in with Magic Link</a> </td>
                                         </tr>
                                       </tbody>
                                     </table>
@@ -401,6 +410,10 @@ const sendOtp = ({ userInfo, redirect }) => {
                                 </tr>
                               </tbody>
                             </table>
+                            <h3><p>Magic link doesn't work for you? </p>
+                              <p>Use the one-time passcode <strong> ${otp}. </strong></p>
+                            </h3>
+                            <h4>This will exprie after ${ttl}, and all previous email should be discarded.</h4>
                           </td>
                         </tr>
                       </table>
@@ -419,7 +432,6 @@ const sendOtp = ({ userInfo, redirect }) => {
                         <br> Have a Login issue?  <a href="mailto:dev@eqworks.com?subject=EQ Works Login Issue">Contact Us</a>.
                       </td>
                     </tr>
-
                   </table>
                 </div>
 
