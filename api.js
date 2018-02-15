@@ -97,7 +97,7 @@ const sendOtp = ({ userInfo, redirect }) => {
   const message = {
     from: 'dev@eqworks.com',
     to: userInfo.email,
-    subject: 'EQ Works Login Authentication ',
+    subject: 'EQ Works Login',
     text: `
       Welcome to EQ Works!\n
       Please login with the magic link ${magicLink}\n
