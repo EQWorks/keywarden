@@ -57,3 +57,23 @@ functions:
               querystrings:
                 user: true
                 otp: true
+  confirm:
+    handler: api.confirm
+    events:
+      - http:
+          path: confirm
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - eq-api-jwt
+          method: get
+          request:
+            parameters:
+              headers:
+                eq-api-jwt: true

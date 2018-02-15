@@ -1,6 +1,6 @@
 {
   "name": "keywarden",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "central login service",
   "scripts": {
     "lint": "eslint api.js",
@@ -16,6 +16,7 @@
     "aws-sdk": "^2.163.0",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.1.0",
+    "lodash": "^4.17.5",
     "luxon": "^0.2.7",
     "mongodb": "^3.0.0-rc0",
     "nodemailer": "^4.4.0",
