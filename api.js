@@ -11,6 +11,8 @@ const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
 const MongoClient = require('mongodb').MongoClient
 const templateReader = require('./template-reader.js')
+const { isEqual } = require('lodash')
+
 
 const JWT_SECRET = process.env.JWT_SECRET
 const JWT_TTL = parseInt(process.env.JWT_TTL) || (90 * 24 * 60 * 60) // in s
@@ -180,6 +182,46 @@ const verifyUser = ({ user, otp }) => {
   })
 }
 
+// get user from datastore and confirm with supplied JWT
+const confirmUser = (payload) => {
+  let _client
+  // find user with otp hash
+  return MongoClient.connect(MONGO_URI).then((client) => {
+    _client = client
+    return _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL).findOne({
+      email: payload.email
+    }, {
+      projection: {
+        _id: 0,
+        email: 1,
+        api_access: 1,
+        jwt_uuid: 1
+      },
+      maxTimeMS: 15 * 1000 // give it half of the 30 sec total limit
+    })
+  }).then((doc) => {
+    _client.close()
+    for (const key of ['email', 'jwt_uuid']) {
+      if (doc[key] !== payload[key]) {
+        return false
+      }
+    }
+    for (const key of Object.keys(doc.api_access)) {
+      if (!isEqual(doc.api_access[key], payload.api_access[key])) {
+        return false
+      }
+    }
+    return true
+  }).catch((err) => {
+    try {
+      _client.close()
+    } catch(err) {
+      // ignore this
+    }
+    throw err
+  })
+}
+
 // HTTP GET /login
 module.exports.login = (event, context, callback) => {
   // get various info needed from event (API Gateway - LAMBDA PROXY)
@@ -271,5 +313,67 @@ module.exports.verify = (event, context, callback) => {
         message: `Unable to verify user ${user} - ${err.message || 'server error'}`
       })
     })
+  })
+}
+
+// HTTP GET /confirm
+module.exports.confirm = (event, context, callback) => {
+  // light version of confirming user JWT validity and integrity
+  const headers = event.headers || {}
+  const token = headers['eq-api-jwt']
+  const { light } = event.queryStringParameters || {}
+  let userInfo
+  // preliminary jwt verify
+  try {
+    userInfo = jwt.verify(token, JWT_SECRET)
+  } catch(err) {
+    return callback(null, {
+      statusCode: 403,
+      headers: CORS_HEADERS(),
+      body: JSON.stringify({
+        message: `Invalid JWT: ${token}`
+      })
+    })
+  }
+  // payload fields existence check
+  const requiredKeys = ['email', 'api_access', 'jwt_uuid']
+  if (!requiredKeys.every(k => k in userInfo)) {
+    return callback(null, {
+      statusCode: 403,
+      headers: CORS_HEADERS(),
+      body: JSON.stringify({
+        message: 'JWT missing required fields in payload'
+      })
+    })
+  }
+  // light confirmation requested, no need to check user integrity against db
+  if (~['1', 'true'].indexOf((light || '').toLowerCase())) {
+    return callback(null, {
+      statusCode: 200,
+      headers: CORS_HEADERS(),
+      body: JSON.stringify({
+        message: `Token confirmed for user: ${userInfo.email} (light)`
+      })
+    })
+  }
+  // payload integrity check against db
+  confirmUser(userInfo).then((result) => {
+    if (!result) {
+      return callback(null, {
+        statusCode: 403,
+        headers: CORS_HEADERS(),
+        body: JSON.stringify({
+          message: `Token payload no longer valid for user: ${userInfo.email}`
+        })
+      })
+    } else {
+      return callback(null, {
+        statusCode: 200,
+        headers: CORS_HEADERS(),
+        body: JSON.stringify({
+          message: `Token confirmed for user: ${userInfo.email}`
+        })
+      })
+    }
   })
 }
