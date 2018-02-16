@@ -10,7 +10,9 @@ const { DateTime } = require('luxon')
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
 const MongoClient = require('mongodb').MongoClient
+const templateReader = require('./template-reader.js')
 const { isEqual } = require('lodash')
+
 
 const JWT_SECRET = process.env.JWT_SECRET
 const JWT_TTL = parseInt(process.env.JWT_TTL) || (90 * 24 * 60 * 60) // in s
@@ -81,6 +83,7 @@ const loginUser = ({ user, otp }) => {
   })
 }
 
+
 // send email with otp
 const sendOtp = ({ userInfo, redirect }) => {
   const otp = userInfo.otp.passcode // the plaintext version is only available from loginUser()
@@ -97,19 +100,14 @@ const sendOtp = ({ userInfo, redirect }) => {
   const message = {
     from: 'dev@eqworks.com',
     to: userInfo.email,
-    subject: 'EQ Works Login Passcode',
+    subject: 'EQ Works Login',
     text: `
-      Welcome to EQ Works\n
-      Please login with the Magic Link ${magicLink}\n
-      Or manually enter: ${otp}\n
-      You have until ${ttl} before it expires, and all previous passcodes are now invalid
+      Welcome to EQ Works!\n
+      Please login with the magic link ${magicLink}\n
+      Or manually enter: ${otp} \n
+      This will exprie after ${ttl}, and all previous email should be discarded.
     `,
-    html: `
-      <h3>Welcome to EQ Works</h3>
-      <p>Login with the <a href="${magicLink}">Magic Link</a></p>
-      <p>Or manually enter: <strong>${otp}</strong></p>
-      <p>You have until <strong>${ttl}</strong> before it expires, and all previous passcodes are now invalid</p>
-    `
+    html: templateReader.read(magicLink, otp, ttl)
   }
   return nodemailer.createTransport({ SES: new AWS.SES() }).sendMail(message)
 }
