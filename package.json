@@ -3,8 +3,7 @@
   "version": "0.2.0",
   "description": "central login service",
   "scripts": {
-    "lint": "eslint api.js",
-    "deploy": "eslint api.js && sls deploy",
+    "lint": "eslint api.js"
   },
   "repository": {
     "type": "git",
