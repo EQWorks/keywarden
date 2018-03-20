@@ -250,7 +250,7 @@ module.exports.login = (event, context, callback) => {
     redirect = redirect || `${origin}/${stage}/verify`
     return sendOtp({ userInfo, redirect })
   }).then((info) => {
-    console.log(info)
+    console.log('[INFO]', info)
     return callback(null, {
       statusCode: 200,
       headers: CORS_HEADERS(),
@@ -260,7 +260,7 @@ module.exports.login = (event, context, callback) => {
       })
     })
   }).catch((err) => {
-    console.error(err.stack || err)
+    console.error('[ERROR]', err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
       headers: CORS_HEADERS(),
@@ -305,7 +305,7 @@ module.exports.verify = (event, context, callback) => {
       })
     })
   }).catch((err) => {
-    console.error(err.stack || err)
+    console.error('[ERROR]', err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
       headers: CORS_HEADERS(),
