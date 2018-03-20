@@ -140,14 +140,14 @@ const verifyUser = ({ user, otp }) => {
     // otp verification
     const _otp = doc.otp || {}
     if (DateTime.utc().valueOf() >= _otp.ttl) {
-      const err = new Error('Passcode has expired')
+      const err = new Error(`Passcode has expired for ${user}`)
       err.statusCode = 403
       throw err
     }
     return bcrypt.compare(otp, _otp.hash || '')
   }).then((res) => {
     if (!res) {
-      const err = new Error('Invalid passcode')
+      const err = new Error(`Invalid passcode for ${user}`)
       err.statusCode = 403
       throw err
     }
@@ -250,7 +250,7 @@ module.exports.login = (event, context, callback) => {
     redirect = redirect || `${origin}/${stage}/verify`
     return sendOtp({ userInfo, redirect })
   }).then((info) => {
-    console.log('[INFO]', info)
+    console.log('[INFO]', user, info)
     return callback(null, {
       statusCode: 200,
       headers: CORS_HEADERS(),
@@ -260,7 +260,7 @@ module.exports.login = (event, context, callback) => {
       })
     })
   }).catch((err) => {
-    console.error('[ERROR]', err.stack || err)
+    console.error('[ERROR]', user, err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
       headers: CORS_HEADERS(),
@@ -305,7 +305,7 @@ module.exports.verify = (event, context, callback) => {
       })
     })
   }).catch((err) => {
-    console.error('[ERROR]', err.stack || err)
+    console.error('[ERROR]', user, err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
       headers: CORS_HEADERS(),
