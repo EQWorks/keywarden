@@ -230,12 +230,12 @@ module.exports.login = (event, context, callback) => {
   // which URI to redirect to after /verify successfully
   let { user, redirect } = event.queryStringParameters || {}
   if (!user) {
+    const message = 'Missing `user` in query string parameters'
+    console.log(`[WARNING] ${message}`)
     return callback(null, {
       statusCode: 400,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: 'Missing `user` in query string parameters'
-      })
+      body: JSON.stringify({ message })
     })
   }
   // origin and stage are used for composing the verify link
@@ -250,24 +250,20 @@ module.exports.login = (event, context, callback) => {
     redirect = redirect || `${origin}/${stage}/verify`
     return sendOtp({ userInfo, redirect })
   }).then((info) => {
-    console.log('[INFO]', user, info)
+    const message = `Login passcode has been sent to ${user} through email`
+    console.log(`[INFO] ${message}`, info)
     return callback(null, {
       statusCode: 200,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: `Login passcode has been sent to ${user} through email`,
-        user
-      })
+      body: JSON.stringify({ message, user })
     })
   }).catch((err) => {
-    console.error('[ERROR]', user, err.stack || err)
+    const message = `Unable to login user ${user} - ${err.message || 'server error'}`
+    console.error(`[ERROR] ${message}`, err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: `Unable to login user ${user} - ${err.message || 'server error'}`,
-        user
-      })
+      body: JSON.stringify({ message, user })
     })
   })
 }
@@ -276,42 +272,39 @@ module.exports.login = (event, context, callback) => {
 module.exports.verify = (event, context, callback) => {
   const { user, otp } = event.queryStringParameters || {}
   if (!user) {
+    const message = 'Missing `user` in query string parameters'
+    console.log(`[WARNING] ${message}`)
     return callback(null, {
       statusCode: 400,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: 'Missing `user` in query string parameters'
-      })
+      body: JSON.stringify({ message })
     })
   }
   if (!otp) {
+    const message = 'Missing `user` in query string parameters'
+    console.log(`[WARNING] ${message}`)
     return callback(null, {
       statusCode: 400,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: 'Missing `otp` in query string parameters'
-      })
+      body: JSON.stringify({ message })
     })
   }
   verifyUser({ user, otp }).then((res) => {
     const { token } = res
+    const message = `User ${user} verified, please store and use the attached token responsibly`
+    console.log(`[INFO] ${message}`)
     return callback(null, {
       statusCode: 200,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: `User ${user} verified, please store and use the attached token responsibly`,
-        user,
-        token // this contains { email, api_access }
-      })
+      body: JSON.stringify({ message, user, token })
     })
   }).catch((err) => {
-    console.error('[ERROR]', user, err.stack || err)
+    const message = `Unable to verify user ${user} - ${err.message || 'server error'}`
+    console.error(`[ERROR] ${message}`, err.stack || err)
     return callback(null, {
       statusCode: err.statusCode || 500,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: `Unable to verify user ${user} - ${err.message || 'server error'}`
-      })
+      body: JSON.stringify({ message })
     })
   })
 }
@@ -327,52 +320,52 @@ module.exports.confirm = (event, context, callback) => {
   try {
     userInfo = jwt.verify(token, JWT_SECRET)
   } catch(err) {
+    const message = `Invalid JWT: ${token}`
+    console.log(`[WARNING] ${message}`)
     return callback(null, {
       statusCode: 403,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: `Invalid JWT: ${token}`
-      })
+      body: JSON.stringify({ message })
     })
   }
   // payload fields existence check
   const requiredKeys = ['email', 'api_access', 'jwt_uuid']
   if (!requiredKeys.every(k => k in userInfo)) {
+    const message = 'JWT missing required fields in payload'
+    console.log(`[WARNING] ${message}`, userInfo)
     return callback(null, {
       statusCode: 403,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: 'JWT missing required fields in payload'
-      })
+      body: JSON.stringify({ message })
     })
   }
   // light confirmation requested, no need to check user integrity against db
   if (~['1', 'true'].indexOf((light || '').toLowerCase())) {
+    const message = `Token confirmed for user: ${userInfo.email} (light)`
+    console.log(`[INFO] ${message}`)
     return callback(null, {
       statusCode: 200,
       headers: CORS_HEADERS(),
-      body: JSON.stringify({
-        message: `Token confirmed for user: ${userInfo.email} (light)`
-      })
+      body: JSON.stringify({ message })
     })
   }
   // payload integrity check against db
   confirmUser(userInfo).then((result) => {
     if (!result) {
+      const message = `Token payload no longer valid for user: ${userInfo.email}`
+      console.log(`[WARNING] ${message}`)
       return callback(null, {
         statusCode: 403,
         headers: CORS_HEADERS(),
-        body: JSON.stringify({
-          message: `Token payload no longer valid for user: ${userInfo.email}`
-        })
+        body: JSON.stringify({ message })
       })
     } else {
+      const message = `Token confirmed for user: ${userInfo.email}`
+      console.log(`[INFO] ${message}`)
       return callback(null, {
         statusCode: 200,
         headers: CORS_HEADERS(),
-        body: JSON.stringify({
-          message: `Token confirmed for user: ${userInfo.email}`
-        })
+        body: JSON.stringify({ message })
       })
     }
   })
