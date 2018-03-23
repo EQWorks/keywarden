@@ -35,7 +35,7 @@ const CORS_HEADERS = () => {
 const getOtp = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 
 // get user from datastore and set otp
-const loginUser = ({ user, otp }) => {
+const loginUser = ({ user, otp, zone='utc' }) => {
   let _client
   // find and update user with bcrypt'ed otp
   return MongoClient.connect(MONGO_URI).then((client) => {
@@ -64,10 +64,11 @@ const loginUser = ({ user, otp }) => {
     _client.close()
     const email = r.value.email
     const _otp = r.value.otp || {}
-    _otp.ttl = DateTime.fromMillis(
-      _otp.ttl,
-      { zone: 'utc' }
-    ).toLocaleString(DateTime.DATETIME_FULL_WITH_SECONDS)
+    let _ttl = DateTime.fromMillis(_otp.ttl, { zone })
+    if (_ttl.invalidReason === 'unsupported zone') {
+      _ttl = DateTime.fromMillis(_otp.ttl, { zone: 'utc' })
+    }
+    _otp.ttl = _ttl.toLocaleString(DateTime.DATETIME_FULL_WITH_SECONDS)
     _otp.passcode = otp // assign plaintext value
     return {
       email,
@@ -228,7 +229,7 @@ module.exports.login = (event, context, callback) => {
   // `user` is in the form of an email address
   // `redirect` is used for signaling requesting application
   // which URI to redirect to after /verify successfully
-  let { user, redirect } = event.queryStringParameters || {}
+  const { user, redirect, zone } = event.queryStringParameters || {}
   if (!user) {
     const message = 'Missing `user` in query string parameters'
     console.log(`[WARNING] ${message}`)
@@ -242,13 +243,15 @@ module.exports.login = (event, context, callback) => {
   const headers = event.headers || {}
   const origin = `${headers['X-Forwarded-Proto']}://${headers.Host}`
   const { stage } = event.requestContext || {}
-  // grab an otp
-  const otp = getOtp()
-  // get user and set its otp
-  return loginUser({ user, otp }).then((userInfo) => {
-    // default redirect back to keywarden for manual verification
-    redirect = redirect || `${origin}/${stage}/verify`
-    return sendOtp({ userInfo, redirect })
+  const otp = getOtp() // grab an otp
+  return loginUser({ // get user and set its otp
+    user, otp,
+    zone: decodeURIComponent(zone)
+  }).then((userInfo) => {
+    return sendOtp({ // send OTP along with redirect (magic) link for /verify
+      userInfo,
+      redirect: decodeURIComponent(redirect || `${origin}/${stage}/verify`)
+    })
   }).then((info) => {
     const message = `Login passcode has been sent to ${user} through email`
     console.log(`[INFO] ${message}`, info)
