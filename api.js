@@ -6,7 +6,7 @@ const url = require('url')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 const uuidv4 = require('uuid/v4')
-const { DateTime } = require('luxon')
+const moment = require('moment-timezone')
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
 const MongoClient = require('mongodb').MongoClient
@@ -48,7 +48,7 @@ const loginUser = ({ user, otp, zone='utc' }) => {
       $set: {
         otp: {
           hash,
-          ttl: DateTime.utc().plus(OTP_TTL).valueOf()
+          ttl: Number(moment().add(OTP_TTL, 'ms').format('x'))
         }
       }
     }, {
@@ -64,11 +64,7 @@ const loginUser = ({ user, otp, zone='utc' }) => {
     _client.close()
     const email = r.value.email
     const _otp = r.value.otp || {}
-    let _ttl = DateTime.fromMillis(_otp.ttl, { zone })
-    if (_ttl.invalidReason === 'unsupported zone') {
-      _ttl = DateTime.fromMillis(_otp.ttl, { zone: 'utc' })
-    }
-    _otp.ttl = _ttl.toLocaleString(DateTime.DATETIME_FULL_WITH_SECONDS)
+    _otp.ttl = moment.tz(_otp.ttl, zone).format('LLLL z')
     _otp.passcode = otp // assign plaintext value
     return {
       email,
@@ -140,7 +136,7 @@ const verifyUser = ({ user, otp }) => {
     _userInfo = { email, api_access, jwt_uuid }
     // otp verification
     const _otp = doc.otp || {}
-    if (DateTime.utc().valueOf() >= _otp.ttl) {
+    if (Number(moment().format('x')) >= _otp.ttl) {
       const err = new Error(`Passcode has expired for ${user}`)
       err.statusCode = 403
       throw err
