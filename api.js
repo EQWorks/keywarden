@@ -102,7 +102,7 @@ const sendOtp = ({ userInfo, redirect }) => {
       Welcome to EQ Works!\n
       Please login with the magic link ${magicLink}\n
       Or manually enter: ${otp} \n
-      This will exprie after ${ttl}, and all previous email should be discarded.
+      This will expire after ${ttl}, and all previous email should be discarded.
     `,
     html: templateReader.read(magicLink, otp, ttl)
   }
