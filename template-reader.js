@@ -116,7 +116,7 @@ module.exports.read = (magicLink, otp, ttl) => {
           h4 {
             font-size: 12px;
             color: #999999;
-            text-align: center;
+            text-align: center; 
             width: 60%;
             margin: 0 auto;
           }
@@ -308,7 +308,7 @@ module.exports.read = (magicLink, otp, ttl) => {
                             <h3><p>Magic link doesn't work for you? </p>
                               <p>Use the one-time passcode <strong> ${otp}. </strong></p>
                             </h3>
-                            <h4>This will expire after ${ttl}, and all previous email should be discarded.</h4>
+                            <h4>This will exprie after ${ttl}, and all previous email should be discarded.</h4>
                           </td>
                         </tr>
                       </table>
