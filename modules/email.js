@@ -1,5 +1,5 @@
-module.exports.read = (magicLink, otp, ttl) => {
-	return `
+module.exports.magicLinkEmail = (magicLink, otp, ttl) => {
+  return `
      <head>
         <style>
           /* -------------------------------------

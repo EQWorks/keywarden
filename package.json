@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "description": "central login service",
   "scripts": {
-    "lint": "eslint api.js",
+    "lint": "eslint --ext .js .",
     "deploy": "eslint api.js && sls deploy"
   },
   "repository": {
@@ -13,17 +13,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.163.0",
+    "aws-sdk": "^2.233.1",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^8.1.0",
-    "lodash": "^4.17.5",
-    "moment-timezone": "^0.5.14",
-    "mongodb": "^3.0.5",
-    "nodemailer": "^4.4.0",
-    "uuid": "^3.1.0"
+    "jsonwebtoken": "^8.2.1",
+    "lodash": "^4.17.10",
+    "moment-timezone": "^0.5.16",
+    "mongodb": "^3.0.7",
+    "nodemailer": "^4.6.4",
+    "uuid": "^3.2.1"
   },
   "devDependencies": {
-    "eslint": "^4.13.0",
-    "serverless-domain-manager": "^2.1.0"
+    "eslint": "^4.19.1",
+    "serverless-domain-manager": "^2.3.6"
   }
 }
