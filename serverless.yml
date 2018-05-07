@@ -21,8 +21,6 @@ custom:
     - eq-api-key-field
     - eq-api-app-session
     - eq-overlord-ver
-  # this is [STAGE NAME]-env.yml, default to dev-env.yml
-  envFile: ./${opt:stage, self:provider.stage}-env.yml
   customDomain:
     domainName: 'auth.eqworks.io'
     basePath: '${opt:stage, self:provider.stage}'
@@ -35,7 +33,12 @@ provider:
   runtime: nodejs8.10
   timeout: 30
   memorySize: 256
-  environment: ${file(./${self:custom.envFile}):}
+  environment:
+    JWT_SECRET: ${env:JWT_SECRET}
+    MONGO_URI: ${env:MONGO_URI}
+    MONGO_USER_DB: ${env:MONGO_USER_DB}
+    MONGO_USER_COLL: ${env:MONGO_USER_COLL}
+    OTP_TTL: ${env:OTP_TTL}
   vpc: # vpc-70658509 | EQ-DC-Tunnel
     securityGroupIds:
       - sg-081b437d # api-gateway-dc
