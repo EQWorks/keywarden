@@ -1,6 +1,3 @@
-# temp ignore
-package-lock.json
-
 *env.yml
 *env.yaml
 !sample-env.yml
