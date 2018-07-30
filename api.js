@@ -3,9 +3,10 @@ const {
   getOtp,
   loginUser,
   sendOtp,
+  signJwt,
   verifyOtp,
   verifyJwt,
-  confirmUser
+  confirmUser,
 } = require('./modules/auth.js')
 
 // HTTP GET /
@@ -167,6 +168,58 @@ module.exports.confirm = (event, context, callback) => {
         statusCode: 200,
         headers: corsHeaders(),
         body: JSON.stringify({ message })
+      })
+    }
+  })
+}
+
+// HTTP GET /refresh
+module.exports.refresh = (event, context, callback) => {
+  const headers = event.headers || {}
+  const token = headers['eq-api-jwt']
+  let userInfo
+  // preliminary jwt verify
+  try {
+    userInfo = verifyJwt(token)
+  } catch(err) {
+    const message = `Invalid JWT: ${token}`
+    console.log(`[WARNING] ${message}`)
+    return callback(null, {
+      statusCode: 403,
+      headers: corsHeaders(),
+      body: JSON.stringify({ message })
+    })
+  }
+  // payload fields existence check
+  const requiredKeys = ['email', 'api_access', 'jwt_uuid']
+  if (!requiredKeys.every(k => k in userInfo)) {
+    const message = 'JWT missing required fields in payload'
+    console.log(`[WARNING] ${message}`, userInfo)
+    return callback(null, {
+      statusCode: 403,
+      headers: corsHeaders(),
+      body: JSON.stringify({ message })
+    })
+  }
+  // payload integrity check against db
+  confirmUser(userInfo).then((result) => {
+    if (!result) {
+      const message = `Token payload no longer valid for user: ${userInfo.email}`
+      console.log(`[WARNING] ${message}`)
+      return callback(null, {
+        statusCode: 403,
+        headers: corsHeaders(),
+        body: JSON.stringify({ message })
+      })
+    } else {
+      const message = `Token refreshed for user: ${userInfo.email}`
+      console.log(`[INFO] ${message}`)
+      const { email, api_access, jwt_uuid } = userInfo
+      const token = signJwt({ email, api_access, jwt_uuid })
+      return callback(null, {
+        statusCode: 200,
+        headers: corsHeaders(),
+        body: JSON.stringify({ message, token })
       })
     }
   })

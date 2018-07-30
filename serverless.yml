@@ -94,3 +94,16 @@ functions:
                 light: false
               headers:
                 eq-api-jwt: true
+  refresh:
+    handler: api.refresh
+    events:
+      - http:
+          path: refresh
+          cors:
+            origin: '*'
+            headers: ${self:custom.allowedHeaders}
+          method: get
+          request:
+            parameters:
+              headers:
+                eq-api-jwt: true
