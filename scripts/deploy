@@ -49,7 +49,7 @@ if [ $DEPLOY_EXIT -eq 0 ] || [[ $DEPLOY_RES = *"Too Many Requests"* ]]; then
 	SLACK_COLOR='good'
 	SLACK_STATUS='succeeded'
 	SLACK_TITLE="View the changes live (${STAGE})"
-	SLACK_LINK="https://api.eqworks.io/${STAGE}"
+	SLACK_LINK="https://auth.eqworks.io/${STAGE}"
 	SLACK_TEXT="See <${BUILD_LINK}|build log> | branch <${BRANCH_LINK}|${BRANCH}> | commit <${COMMIT_LINK}|${SERVICE_VER}>"
 else
 	SLACK_COLOR='danger'
