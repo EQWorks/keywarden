@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# deploy script directory to anchor where to call deployment
+DIR=$(dirname "${BASH_SOURCE[0]}")
+
+cd "$DIR/.."
+
+# retrieve information from local git
+BRANCH=${TRAVIS_PULL_REQUEST_BRANCH:-${TRAVIS_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}}
+SERVICE_VER=${TRAVIS_PULL_REQUEST_SHA:-${TRAVIS_COMMIT:-$(git rev-parse --short HEAD)}}
+SERVICE_VER=$(git rev-parse --short ${SERVICE_VER}) # get the short hash
+
+STAGE="dev"
+
+echo -e "\n============= Deploying branch: ${BRANCH} (${SERVICE_VER}) to stage: ${STAGE}..."
+
+# deploy with branch/stage specific env vars
+DEPLOY_RES=$(bash -c "env $(print-env dev-env.yml) KEYWARDEN_VER=${SERVICE_VER} sls deploy --stage ${STAGE}")
+
+echo "$DEPLOY_RES"

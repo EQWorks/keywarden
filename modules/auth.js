@@ -96,6 +96,8 @@ const sendOtp = ({ userInfo, redirect }) => {
   return nodemailer.createTransport({ SES: new AWS.SES() }).sendMail(message)
 }
 
+const signJwt = (userInfo) => (jwt.sign(userInfo, JWT_SECRET, { expiresIn: JWT_TTL }))
+
 // get user from datastore and verify otp
 const verifyOtp = ({ user, otp }) => {
   let _client
@@ -154,7 +156,7 @@ const verifyOtp = ({ user, otp }) => {
     _client.close()
     // passcode checked, generate jwt and return
     return {
-      token: jwt.sign(_userInfo, JWT_SECRET, { expiresIn: JWT_TTL })
+      token: signJwt(_userInfo)
     }
   }).catch((err) => {
     try {
@@ -208,11 +210,18 @@ const confirmUser = (payload) => {
   })
 }
 
+const checkRequired = ({
+  userInfo,
+  required=['email', 'api_access', 'jwt_uuid'],
+}) => (required.every(k => k in userInfo))
+
 module.exports = {
   getOtp,
   loginUser,
   sendOtp,
+  signJwt,
   verifyOtp,
   verifyJwt,
-  confirmUser
+  confirmUser,
+  checkRequired,
 }
