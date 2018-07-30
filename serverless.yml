@@ -4,8 +4,16 @@ plugins:
   - serverless-domain-manager
 
 custom:
-  # this is [STAGE NAME]-env.yml, default to dev-env.yml
-  envFile: ./${opt:stage, self:provider.stage}-env.yml
+  # CORS allowed headers
+  allowedHeaders:
+    - Content-Type
+    - X-Amz-Date
+    - Authorization
+    - X-Api-Key
+    - X-Amz-Security-Token
+    - X-Amz-User-Agent
+    - eq-api-user
+    - eq-api-jwt
   customDomain:
     domainName: 'auth.eqworks.io'
     basePath: '${opt:stage, self:provider.stage}'
@@ -15,10 +23,15 @@ custom:
 
 provider:
   name: aws
-  runtime: nodejs6.10
+  runtime: nodejs8.10
   timeout: 30
   memorySize: 256
-  environment: ${file(./${self:custom.envFile}):}
+  environment:
+    JWT_SECRET: ${env:JWT_SECRET}
+    MONGO_URI: ${env:MONGO_URI}
+    MONGO_USER_DB: ${env:MONGO_USER_DB}
+    MONGO_USER_COLL: ${env:MONGO_USER_COLL}
+    OTP_TTL: ${env:OTP_TTL}
   vpc: # vpc-70658509 | EQ-DC-Tunnel
     securityGroupIds:
       - sg-081b437d # api-gateway-dc
@@ -64,14 +77,7 @@ functions:
           path: confirm
           cors:
             origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-              - X-Amz-User-Agent
-              - eq-api-jwt
+            headers: ${self:custom.allowedHeaders}
           method: get
           request:
             parameters:
