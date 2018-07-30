@@ -44,19 +44,19 @@ DEPLOY_EXIT=$?
 # slack message
 BUILD_LINK="https://travis-ci.com/EQWorks/keywarden/builds/${TRAVIS_BUILD_ID}"
 BRANCH_LINK="https://github.com/EQWorks/keywarden/tree/${BRANCH}"
-COMMIT_LINK="https://github.com/EQWorks/keywarden/commit/${OVERSEER_VER}"
+COMMIT_LINK="https://github.com/EQWorks/keywarden/commit/${SERVICE_VER}"
 if [ $DEPLOY_EXIT -eq 0 ] || [[ $DEPLOY_RES = *"Too Many Requests"* ]]; then
 	SLACK_COLOR='good'
 	SLACK_STATUS='succeeded'
 	SLACK_TITLE="View the changes live (${STAGE})"
 	SLACK_LINK="https://api.eqworks.io/${STAGE}"
-	SLACK_TEXT="See <${BUILD_LINK}|build log> | branch <${BRANCH_LINK}|${BRANCH}> | commit <${COMMIT_LINK}|${OVERSEER_VER}>"
+	SLACK_TEXT="See <${BUILD_LINK}|build log> | branch <${BRANCH_LINK}|${BRANCH}> | commit <${COMMIT_LINK}|${SERVICE_VER}>"
 else
 	SLACK_COLOR='danger'
 	SLACK_STATUS='failed'
 	SLACK_TITLE="Build log"
 	SLACK_LINK="$BUILD_LINK"
-	SLACK_TEXT="branch <${BRANCH_LINK}|${BRANCH}> | commit <${COMMIT_LINK}|${OVERSEER_VER}>"
+	SLACK_TEXT="branch <${BRANCH_LINK}|${BRANCH}> | commit <${COMMIT_LINK}|${SERVICE_VER}>"
 	echo "${DEPLOY_RES}"
 fi
 SLACK_PRETEXT="Deployment to keywarden (${STAGE}) ${SLACK_STATUS}"
