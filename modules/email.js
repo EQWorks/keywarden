@@ -289,7 +289,7 @@ module.exports.magicLinkEmail = (magicLink, otp, ttl) => {
                       <table border="0" cellpadding="0" cellspacing="0">
                         <tr>
                           <td>
-                            <h1>Welcome to EQ Works!</h1>
+                            <h1>Welcome to ATOM</h1>
                             <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                               <tbody>
                                 <tr>
@@ -323,8 +323,7 @@ module.exports.magicLinkEmail = (magicLink, otp, ttl) => {
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
                       <td class="content-block">
-                        <span class="apple-link">© EQ Works Inc</span>
-                        <br> Have a Login issue?  <a href="mailto:dev@eqworks.com?subject=EQ Works Login Issue">Contact Us</a>.
+                        <br> Have a Login issue? <a href="mailto:dev@eqworks.com?subject=ATOM Login Issue">Contact Us</a>.
                       </td>
                     </tr>
                   </table>

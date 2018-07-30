@@ -84,9 +84,9 @@ const sendOtp = ({ userInfo, redirect }) => {
   const message = {
     from: 'dev@eqworks.com',
     to: userInfo.email,
-    subject: 'EQ Works Login',
+    subject: 'ATOM Login',
     text: `
-      Welcome to EQ Works!\n
+      Welcome to ATOM.\n
       Please login with the magic link ${magicLink}\n
       Or manually enter: ${otp} \n
       This will expire after ${ttl}, and all previous email should be discarded.
