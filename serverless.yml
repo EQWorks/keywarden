@@ -12,15 +12,8 @@ custom:
     - X-Api-Key
     - X-Amz-Security-Token
     - X-Amz-User-Agent
-    - eq-api-app
-    - eq-api-app-key
-    - eq-api-app-session
     - eq-api-user
     - eq-api-jwt
-    - eq-api-key
-    - eq-api-key-field
-    - eq-api-app-session
-    - eq-overlord-ver
   customDomain:
     domainName: 'auth.eqworks.io'
     basePath: '${opt:stage, self:provider.stage}'
