@@ -9,6 +9,8 @@ branches:
     - /^dev-.+$/
     # intended for /prod stage tag deployment
     - /^prod-.+$/
+before_install:
+  - npm install -g serverless
 script:
   - npm run lint
   - ./scripts/deploy
