@@ -32,6 +32,8 @@ provider:
     MONGO_USER_DB: ${env:MONGO_USER_DB}
     MONGO_USER_COLL: ${env:MONGO_USER_COLL}
     OTP_TTL: ${env:OTP_TTL}
+    KEYWARDEN_VER: ${env:KEYWARDEN_VER}
+    STAGE: ${opt:stage, self:provider.stage}
   vpc: # vpc-70658509 | EQ-DC-Tunnel
     securityGroupIds:
       - sg-081b437d # api-gateway-dc
@@ -46,6 +48,13 @@ provider:
       Resource: arn:aws:ses:us-east-1:175398475102:*
 
 functions:
+  index:
+    handler: api.index
+    events:
+      - http:
+          path: /
+          cors: true
+          method: get
   login:
     handler: api.login
     events:

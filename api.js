@@ -8,6 +8,19 @@ const {
   confirmUser
 } = require('./modules/auth.js')
 
+// HTTP GET /
+module.exports.index = (event, context, callback) => {
+  const { KEYWARDEN_VER, STAGE } = process.env
+  return callback(null, {
+    statusCode: 200,
+    headers: corsHeaders(),
+    body: JSON.stringify({
+      STAGE,
+      KEYWARDEN_VER,
+    })
+  })
+}
+
 // HTTP GET /login
 module.exports.login = (event, context, callback) => {
   // get various info needed from event (API Gateway - LAMBDA PROXY)
