@@ -210,6 +210,11 @@ const confirmUser = (payload) => {
   })
 }
 
+const checkRequired = ({
+  userInfo,
+  required=['email', 'api_access', 'jwt_uuid'],
+}) => (required.every(k => k in userInfo))
+
 module.exports = {
   getOtp,
   loginUser,
@@ -218,4 +223,5 @@ module.exports = {
   verifyOtp,
   verifyJwt,
   confirmUser,
+  checkRequired,
 }

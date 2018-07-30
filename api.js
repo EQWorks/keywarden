@@ -7,6 +7,7 @@ const {
   verifyOtp,
   verifyJwt,
   confirmUser,
+  checkRequired,
 } = require('./modules/auth.js')
 
 // HTTP GET /
@@ -131,8 +132,7 @@ module.exports.confirm = (event, context, callback) => {
     })
   }
   // payload fields existence check
-  const requiredKeys = ['email', 'api_access', 'jwt_uuid']
-  if (!requiredKeys.every(k => k in userInfo)) {
+  if (!checkRequired({ userInfo })) {
     const message = 'JWT missing required fields in payload'
     console.log(`[WARNING] ${message}`, userInfo)
     return callback(null, {
@@ -191,8 +191,7 @@ module.exports.refresh = (event, context, callback) => {
     })
   }
   // payload fields existence check
-  const requiredKeys = ['email', 'api_access', 'jwt_uuid']
-  if (!requiredKeys.every(k => k in userInfo)) {
+  if (!checkRequired({ userInfo })) {
     const message = 'JWT missing required fields in payload'
     console.log(`[WARNING] ${message}`, userInfo)
     return callback(null, {
