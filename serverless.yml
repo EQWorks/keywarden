@@ -48,62 +48,21 @@ provider:
       Resource: arn:aws:ses:us-east-1:175398475102:*
 
 functions:
-  index:
-    handler: api.index
+  app:
+    handler: app.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
     events:
       - http:
           path: /
-          cors: true
-          method: get
-  login:
-    handler: api.login
-    events:
-      - http:
-          path: login
-          cors: true
-          method: get
-          request:
-            parameters:
-              querystrings:
-                user: true
-                redirect: false
-  verify:
-    handler: api.verify
-    events:
-      - http:
-          path: verify
-          cors: true
-          method: get
-          request:
-            parameters:
-              querystrings:
-                user: true
-                otp: true
-  confirm:
-    handler: api.confirm
-    events:
-      - http:
-          path: confirm
+          method: ANY
           cors:
             origin: '*'
             headers: ${self:custom.allowedHeaders}
-          method: get
-          request:
-            parameters:
-              querystrings:
-                light: false
-              headers:
-                eq-api-jwt: true
-  refresh:
-    handler: api.refresh
-    events:
       - http:
-          path: refresh
+          path: '{proxy+}'
+          method: ANY
           cors:
             origin: '*'
             headers: ${self:custom.allowedHeaders}
-          method: get
-          request:
-            parameters:
-              headers:
-                eq-api-jwt: true
