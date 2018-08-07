@@ -70,11 +70,10 @@ app.get('/', (req, res) => {
 // GET /login
 app.get('/login', hasQueryParams('user'), (req, res, next) => {
   const { user, redirect, zone } = req.query
-  let { stage } = req.context || {}
-  stage = stage || process.env.STAGE
+  const { STAGE } = process.env
   let origin = `${req.protocol}://${req.get('host')}`
-  if (stage) {
-    origin += `/${stage}`
+  if (STAGE) {
+    origin += `/${STAGE}`
   }
   const otp = getOtp() // grab an otp
   // get user and set its otp
@@ -173,9 +172,5 @@ if (require.main === module) {
     console.log('Listening on port 3333')
   })
 } else {
-  module.exports.handler = serverless(app, {
-    request: (request, event) => {
-      request.context = event.requestContext || {}
-    },
-  })
+  module.exports.handler = serverless(app)
 }
