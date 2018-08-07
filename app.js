@@ -36,7 +36,6 @@ const hasQueryParams = (...params) => (req, res, next) => {
 
 const verifyToken = (req, res, next) => {
   const token = req.get('eq-api-jwt')
-  const { light } = req.query
   let userInfo
   // preliminary jwt verify
   try {
@@ -60,7 +59,7 @@ const verifyToken = (req, res, next) => {
 }
 
 // GET /
-app.get('/', (req, res, next) => {
+app.get('/', (req, res) => {
   let { KEYWARDEN_VER, STAGE } = process.env
   return res.json({
     STAGE,
@@ -149,6 +148,8 @@ app.get('/refresh', verifyToken, (req, res, next) => {
 })
 
 // catch-all error handler
+// eslint disable otherwise not able to catch errors
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   let { logLevel, statusCode } = err
   const { message } = err
