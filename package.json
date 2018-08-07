@@ -1,29 +1,34 @@
 {
   "name": "keywarden",
-  "version": "0.3.0",
-  "description": "central login service",
+  "version": "1.0.0",
+  "description": "central auth service",
   "scripts": {
+    "start": "env $(print-env dev-env.yml local-env.yml) nodemon app.js",
     "lint": "eslint --ext .js .",
-    "deploy": "eslint api.js && sls deploy"
+    "deploy": "npm run lint && sls deploy"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/EQWorks/keywarden.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "woozyking",
+  "license": "UNLICENSED",
   "dependencies": {
-    "aws-sdk": "^2.233.1",
+    "aws-sdk": "^2.287.0",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^8.2.1",
+    "cors": "^2.8.4",
+    "express": "^4.16.3",
+    "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.10",
-    "moment-timezone": "^0.5.16",
-    "mongodb": "^3.0.7",
-    "nodemailer": "^4.6.4",
-    "uuid": "^3.2.1"
+    "moment-timezone": "^0.5.21",
+    "mongodb": "^3.1.1",
+    "nodemailer": "^4.6.7",
+    "serverless-http": "^1.6.0",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "eslint": "^4.19.1",
-    "serverless-domain-manager": "^2.3.6"
+    "nodemon": "^1.18.3",
+    "serverless-domain-manager": "^2.6.0"
   }
 }

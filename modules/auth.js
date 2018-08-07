@@ -26,7 +26,9 @@ const getOtp = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 const loginUser = ({ user, otp, zone='utc' }) => {
   let _client
   // find and update user with bcrypt'ed otp
-  return MongoClient.connect(MONGO_URI).then((client) => {
+  return MongoClient.connect(MONGO_URI, {
+    useNewUrlParser: true
+  }).then((client) => {
     _client = client
     return bcrypt.hash(otp, 10)
   }).then((hash) => {
@@ -104,7 +106,9 @@ const verifyOtp = ({ user, otp }) => {
   let _userInfo
   let _col
   // find user with otp hash
-  return MongoClient.connect(MONGO_URI).then((client) => {
+  return MongoClient.connect(MONGO_URI, {
+    useNewUrlParser: true
+  }).then((client) => {
     _client = client
     _col = _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL)
     return _col.findOne({
@@ -156,6 +160,7 @@ const verifyOtp = ({ user, otp }) => {
     _client.close()
     // passcode checked, generate jwt and return
     return {
+      user,
       token: signJwt(_userInfo)
     }
   }).catch((err) => {
@@ -174,7 +179,9 @@ const verifyJwt = (token) => jwt.verify(token, JWT_SECRET)
 const confirmUser = (payload) => {
   let _client
   // find user with otp hash
-  return MongoClient.connect(MONGO_URI).then((client) => {
+  return MongoClient.connect(MONGO_URI, {
+    useNewUrlParser: true
+  }).then((client) => {
     _client = client
     return _client.db(MONGO_USER_DB).collection(MONGO_USER_COLL).findOne({
       email: payload.email

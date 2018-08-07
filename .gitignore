@@ -1,6 +1,7 @@
 *env.yml
 *env.yaml
 !sample-env.yml
+!local-env.yml
 
 # package directories
 node_modules
