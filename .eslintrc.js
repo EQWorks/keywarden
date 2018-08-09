@@ -8,7 +8,7 @@ module.exports = {
     "eslint:recommended",
   ],
   "parserOptions": {
-    ecmaVersion: 6,
+    ecmaVersion: 2017,
     "sourceType": "module",
   },
   "rules": {

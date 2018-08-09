@@ -1,19 +1,16 @@
 const express = require('express')
 
 const {
-  getOtp,
   loginUser,
-  sendOtp,
-  signJwt,
-  verifyOtp,
-  verifyJwt,
+  signJWT,
+  verifyOTP,
+  verifyJWT,
   confirmUser,
-  checkRequired,
 } = require('./modules/auth.js')
 
 const api = express.Router()
 
-// middleware
+// query parameter check middleware
 const hasQueryParams = (...params) => (req, res, next) => {
   for (const param of params) {
     if (!req.query[param]) {
@@ -26,12 +23,13 @@ const hasQueryParams = (...params) => (req, res, next) => {
   return next()
 }
 
-const verifyToken = (req, res, next) => {
+// JWT fields check middleware
+const hasTokenFields = (...required) => (req, res, next) => {
   const token = req.get('eq-api-jwt')
   let userInfo
   // preliminary jwt verify
   try {
-    userInfo = verifyJwt(token)
+    userInfo = verifyJWT(token)
   } catch(err) {
     console.error(`[ERROR] ${err.message}`, err.stack || err)
     const error = new Error(`Invalid JWT: ${token}`)
@@ -40,7 +38,7 @@ const verifyToken = (req, res, next) => {
     return next(error)
   }
   // payload fields existence check
-  if (!checkRequired({ userInfo })) {
+  if (!required.every(k => k in userInfo)) {
     const error = new Error('JWT missing required fields in payload')
     error.statusCode = 403
     error.logLevel = 'WARNING'
@@ -67,18 +65,11 @@ api.get('/login', hasQueryParams('user'), (req, res, next) => {
   if (STAGE) {
     origin += `/${STAGE}`
   }
-  const otp = getOtp() // grab an otp
-  // get user and set its otp
+  // login user and send OTP email
   return loginUser({
     user,
-    otp,
+    redirect: decodeURIComponent(redirect || `${origin}/verify`),
     zone: decodeURIComponent(zone || 'utc'),
-  }).then((userInfo) => {
-    // send OTP along with redirect (magic) link for /verify
-    return sendOtp({
-      userInfo,
-      redirect: decodeURIComponent(redirect || `${origin}/verify`)
-    })
   }).then((info) => {
     const message = `Login passcode sent to ${user} through email`
     console.log(`[INFO] ${message}`, info)
@@ -88,8 +79,8 @@ api.get('/login', hasQueryParams('user'), (req, res, next) => {
 
 // GET /verify
 api.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
-  verifyOtp(req.query).then((r) => {
-    const { user, token } = r
+  const { user } = req.query
+  verifyOTP(req.query).then((token) => {
     const message = `User ${user} verified, please store and use the token responsibly`
     console.log(`[INFO] ${message}`)
     return res.json({ message, user, token })
@@ -97,45 +88,39 @@ api.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
 })
 
 // GET /confirm
-api.get('/confirm', verifyToken, (req, res, next) => {
+api.get('/confirm', hasTokenFields(
+  'email', 'api_access', 'jwt_uuid'
+), (req, res, next) => {
   const { light } = req.query
   const { userInfo } = req
   const { email: user } = userInfo
+  // perform "light" confirmation if requested so
   if (['1', 'true'].includes((light || '').toLowerCase())) {
     const message = `Token confirmed for user ${user} (light)`
     console.log(`[INFO] ${message}`)
     return res.json({ message, user })
   }
-  confirmUser(userInfo).then((r) => {
-    if (!r) {
-      const error = new Error(`Token payload no longer valid for user ${user}`)
-      error.statusCode = 403
-      error.logLevel = 'WARNING'
-      return next(error)
-    }
+  // otherwise perform user db integrity confirmation
+  confirmUser(userInfo).then(() => {
     const message = `Token confirmed for user ${user}`
     console.log(`[INFO] ${message}`)
     return res.json({ message, user })
-  })
+  }).catch(next)
 })
 
 // GET /refresh
-api.get('/refresh', verifyToken, (req, res, next) => {
+api.get('/refresh', hasTokenFields(
+  'email', 'api_access', 'jwt_uuid'
+), (req, res, next) => {
   const { userInfo } = req
   const { email: user } = userInfo
-  confirmUser(userInfo).then((r) => {
-    if (!r) {
-      const error = new Error(`Token payload no longer valid for user ${user}`)
-      error.statusCode = 403
-      error.logLevel = 'WARNING'
-      return next(error)
-    }
+  confirmUser(userInfo).then(() => {
     const { email, api_access, jwt_uuid } = userInfo
-    const token = signJwt({ email, api_access, jwt_uuid })
+    const token = signJWT({ email, api_access, jwt_uuid })
     const message = `Token refreshed for user ${user}, please store and use the token responsibly`
     console.log(`[INFO] ${message}`)
     return res.json({ message, token, user })
-  })
+  }).catch(next)
 })
 
 module.exports = api
