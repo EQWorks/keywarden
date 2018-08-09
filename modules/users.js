@@ -31,7 +31,7 @@ const updateOTP = async ({ email, otp }) => {
   return ttl
 }
 
-const validateOTP = async ({ email, otp }) => {
+const validateOTP = async ({ email, otp, reset_uuid = false }) => {
   const client = await MongoClient.connect(URI, CONNECT_OPT)
   const coll = client.db(DB).collection(COLL)
   const userInfo = await coll.findOne({ email }, {
@@ -68,7 +68,7 @@ const validateOTP = async ({ email, otp }) => {
     $unset: { otp: '' }
   }
   // set `jwt_uuid` if not set already
-  if (!jwt_uuid) {
+  if (reset_uuid || !jwt_uuid) {
     jwt_uuid = uuidv4()
     updates['$set'] = { jwt_uuid }
   }

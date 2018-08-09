@@ -79,8 +79,11 @@ api.get('/login', hasQueryParams('user'), (req, res, next) => {
 
 // GET /verify
 api.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
-  const { user } = req.query
-  verifyOTP(req.query).then((token) => {
+  const { user, reset_uuid } = req.query
+  verifyOTP({
+    ...req.query,
+    reset_uuid: Boolean(['1', 'true'].includes(reset_uuid)),
+  }).then((token) => {
     const message = `User ${user} verified, please store and use the token responsibly`
     console.log(`[INFO] ${message}`)
     return res.json({ message, user, token })
