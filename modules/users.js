@@ -92,8 +92,19 @@ const getUserInfo = async ({ email, fields=['api_access', 'jwt_uuid'] }) => {
   return userInfo
 }
 
+const resetUUID = async ({ email }) => {
+  const client = await MongoClient.connect(URI, CONNECT_OPT)
+  const jwt_uuid = uuidv4()
+  await client.db(DB).collection(COLL).updateOne({ email }, {
+    $set: { jwt_uuid }
+  })
+  await client.close()
+  return jwt_uuid
+}
+
 module.exports = {
   updateOTP,
   validateOTP,
   getUserInfo,
+  resetUUID,
 }

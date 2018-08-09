@@ -116,13 +116,16 @@ api.get('/refresh', hasTokenFields(
   'email', 'api_access', 'jwt_uuid'
 ), (req, res, next) => {
   const { userInfo } = req
-  const { email: user } = userInfo
-  confirmUser(userInfo).then(() => {
+  const { reset_uuid } = req.query
+  confirmUser({
+    ...userInfo,
+    reset_uuid: Boolean(['1', 'true'].includes(reset_uuid)),
+  }).then(({ uuid }) => {
     const { email, api_access, jwt_uuid } = userInfo
-    const token = signJWT({ email, api_access, jwt_uuid })
-    const message = `Token refreshed for user ${user}, please store and use the token responsibly`
+    const token = signJWT({ email, api_access, jwt_uuid: uuid || jwt_uuid })
+    const message = `Token refreshed for user ${email}, please store and use the token responsibly`
     console.log(`[INFO] ${message}`)
-    return res.json({ message, token, user })
+    return res.json({ message, token, user: email })
   }).catch(next)
 })
 

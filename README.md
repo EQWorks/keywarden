@@ -44,10 +44,12 @@ This endpoint performs the following confirmation/validation:
 
 ### Refresh JWT
 
-`GET /refresh`
+`GET /refresh?reset_uuid=[OPTIONAL: 1 or true]`
 
 JWT supplied as `Header 'eq-api-jwt'`
 
 This is designed to be a simple and not so rigorous mechanism to refresh a given JWT with a new JWT (new expiration). Mostly targeted for use cases to extend expiration. See https://stackoverflow.com/a/26834685/158111 as a vague guideline on the application implementation side on when and how to utilize the refresh mechanism.
 
 Behavior-wise it's almost identical to the `/confirm` endpoint except that on (confirmation) success, a new token is signed and responded, instead of a mere confirmation.
+
+And same as `/verify` endpoint, optional `reset_uuid` can be used to reset JWT UUID and thus effectively invalidate all past tokens.

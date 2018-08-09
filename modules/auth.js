@@ -7,7 +7,12 @@ const AWS = require('aws-sdk')
 const { isEqual } = require('lodash')
 
 const { magicLinkHTML, magicLinkText } = require('./email.js')
-const { updateOTP, validateOTP, getUserInfo } = require('./users.js')
+const {
+  updateOTP,
+  validateOTP,
+  getUserInfo,
+  resetUUID,
+} = require('./users.js')
 
 const {
   JWT_SECRET,
@@ -58,7 +63,7 @@ const verifyJWT = (token) => jwt.verify(token, JWT_SECRET)
 
 // confirm user with supplied JWT payload
 const confirmUser = async (payload) => {
-  const { email, api_access, jwt_uuid } = payload
+  const { email, api_access, jwt_uuid, reset_uuid } = payload
   const {
     api_access: _access,
     jwt_uuid: _uuid,
@@ -72,6 +77,10 @@ const confirmUser = async (payload) => {
     error.statusCode = 403
     error.logLevel = 'WARNING'
     throw error
+  }
+  if (reset_uuid) {
+    const uuid = await resetUUID({ email })
+    return { uuid }
   }
 }
 
