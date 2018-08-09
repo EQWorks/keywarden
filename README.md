@@ -26,19 +26,21 @@ Upon receiving this, the requesting client should make `GET /verify` request on 
 
 ### Verify OTP
 
-`GET /verify?user=<REQUIRED: email>&otp=<REQUIRED: one-time passcode>`
+`GET /verify?user=<REQUIRED: email>&otp=<REQUIRED: one-time passcode>&reset_uuid=[OPTIONAL: 1 or true]`
 
 Upon receiving and validating the OTP obtained from the `/login` process, instead of having the requesting application to generate and maintain a "session", `keywarden` signs a stateless [JWT (JSON web token)](https://jwt.io) for the requesting application to use for further API access against `overseer` and alike.
 
+If `reset_uuid` is supplied as a value of `1` or `true`, given `user`'s `jwt_uuid` will be reset to a new value. This can be used to effectively invalidate all past tokens of given `user`.
+
 ### Confirm JWT 
 
-`GET /confirm?light=[optional: 1 or true]`
+`GET /confirm?light=[OPTIONAL: 1 or true]`
 
 JWT supplied as `Header 'eq-api-jwt'`
 
 This endpoint performs the following confirmation/validation:
-1. A preliminary jwt.verify against the secret that signed the token.
-2. If light is not supplied or not a value of `1` or `true`, a further integrity check against the user database will be performed.
+1. A preliminary `jwt.verify` against the secret that signed the token.
+2. If `light` is not supplied or not a value of `1` or `true`, a further integrity check against the user database will be performed.
 
 ### Refresh JWT
 
