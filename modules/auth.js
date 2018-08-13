@@ -82,6 +82,7 @@ const confirmUser = async (payload) => {
     const uuid = await resetUUID({ email })
     return { uuid }
   }
+  return {}
 }
 
 module.exports = {
