@@ -82,7 +82,7 @@ api.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
   const { user, reset_uuid } = req.query
   verifyOTP({
     ...req.query,
-    reset_uuid: Boolean(['1', 'true'].includes(reset_uuid)),
+    reset_uuid: ['1', 'true'].includes(reset_uuid),
   }).then((token) => {
     const message = `User ${user} verified, please store and use the token responsibly`
     console.log(`[INFO] ${message}`)
@@ -119,7 +119,7 @@ api.get('/refresh', hasTokenFields(
   const { reset_uuid } = req.query
   confirmUser({
     ...userInfo,
-    reset_uuid: Boolean(['1', 'true'].includes(reset_uuid)),
+    reset_uuid: ['1', 'true'].includes(reset_uuid),
   }).then(({ uuid }) => {
     const { email, api_access, jwt_uuid } = userInfo
     const token = signJWT({ email, api_access, jwt_uuid: uuid || jwt_uuid })
