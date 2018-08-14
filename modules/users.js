@@ -14,26 +14,49 @@ const pool = new Pool()
 const updateOTP = async ({ email, otp }) => {
   const hash = bcrypt.hashSync(otp, HASH_ROUND)
   const ttl = Number(moment().add(OTP_TTL, 'ms').format('x'))
-  await pool.query(`
+  const { rowCount } = await pool.query(`
     UPDATE equsers
     SET otp = $1
     WHERE email = $2;
   `, [{ hash, ttl }, email])
+  if (rowCount === 0) {
+    const error = new Error(`User ${email} not found`)
+    error.statusCode = 404
+    error.logLevel = 'WARNING'
+    throw error
+  }
   return ttl
 }
 
-const validateOTP = async ({ email, otp, reset_uuid = false }) => {
-  const userInfo = await pool.query(`
+const getUserInfo = async ({ email, product='atom', otp=false }) => {
+  const { rows=[] } = await pool.query(`
     SELECT
-      otp,
-      atom AS api_access,
-      jwt_uuid
+      prefix,
+      jwt_uuid,
+      whitelabels,
+      customers,
+      ${product}
+      ${otp ? ',otp': ''}
     FROM equsers
     WHERE email = $1;
-  `, [email]).rows[0] || {}
+  `, [email])
+  const userInfo = rows[0] || {}
+  return {
+    ...userInfo,
+    [product]: product,
+    api_access: {
+      ...userInfo[product],
+      wl: userInfo.whitelabels || [],
+      customers: userInfo.customers || [],
+    },
+  }
+}
+
+const validateOTP = async ({ email, otp, reset_uuid = false }) => {
+  const userInfo = await getUserInfo({ email, otp: true })
   const {
-    otp: _otp = {},
-    api_access = {},
+    otp: _otp={},
+    api_access={},
   } = userInfo
   let { jwt_uuid } = userInfo
   // check OTP expiration
@@ -52,11 +75,11 @@ const validateOTP = async ({ email, otp, reset_uuid = false }) => {
     throw error
   }
   // unset OTP from user
-  const updates = ['otp = NULL']
+  const updates = ["otp = '{}'::jsonb"]
   // set `jwt_uuid` if not set already
   if (reset_uuid || !jwt_uuid) {
     jwt_uuid = uuidv4()
-    updates.push(`jwt_uuid = ${jwt_uuid}`)
+    updates.push(`jwt_uuid = '${jwt_uuid}'`)
   }
   // update user
   await pool.query(`
@@ -67,34 +90,12 @@ const validateOTP = async ({ email, otp, reset_uuid = false }) => {
   return { api_access, jwt_uuid }
 }
 
-const getUserInfo = async ({ email, product='atom' }) => {
-  const userInfo = await pool.query(`
-    SELECT
-      prefix,
-      jwt_uuid,
-      whitelabels,
-      customers,
-      ${product}
-    FROM equsers
-    WHERE email = $1;
-  `, [email]).rows[0] || {}
-  return {
-    ...userInfo,
-    [product]: product,
-    api_access: {
-      ...userInfo[product],
-      wl: userInfo.whitelabels || [],
-      customers: userInfo.customers || [],
-    },
-  }
-}
-
 const resetUUID = async ({ email }) => {
   const jwt_uuid = uuidv4()
   await pool.query(`
     UPDATE equsers
     SET jwt_uuid = $2
-    WHERE email = $1
+    WHERE email = $1;
   `, [email, jwt_uuid])
   return jwt_uuid
 }
