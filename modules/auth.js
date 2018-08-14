@@ -67,7 +67,7 @@ const confirmUser = async (payload) => {
   const {
     api_access: _access,
     jwt_uuid: _uuid,
-  } = await getUserInfo({ email, fields: ['api_access', 'jwt_uuid'] })
+  } = await getUserInfo({ email })
   // confirm both JWT UUID and api_access integrity
   if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
     console.log(`[WARNING] Token payload and DB fields mismatch: ${JSON.stringify({
