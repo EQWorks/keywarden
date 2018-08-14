@@ -7,7 +7,12 @@ const AWS = require('aws-sdk')
 const { isEqual } = require('lodash')
 
 const { magicLinkHTML, magicLinkText } = require('./email.js')
-const { updateOTP, validateOTP, getUserInfo } = require('./users.js')
+const {
+  updateOTP,
+  validateOTP,
+  getUserInfo,
+  resetUUID,
+} = require('./users.js')
 
 const {
   JWT_SECRET,
@@ -49,8 +54,8 @@ const loginUser = async ({ user, redirect, zone='utc' }) => {
 const signJWT = (userInfo) => (jwt.sign(userInfo, JWT_SECRET, { expiresIn }))
 
 // verify user OTP and sign JWT on success
-const verifyOTP = async ({ user: email, otp }) => {
-  const { api_access, jwt_uuid } = await validateOTP({ email, otp })
+const verifyOTP = async ({ user: email, otp, reset_uuid = false }) => {
+  const { api_access, jwt_uuid } = await validateOTP({ email, otp, reset_uuid })
   return signJWT({ email, api_access, jwt_uuid })
 }
 
@@ -58,13 +63,13 @@ const verifyJWT = (token) => jwt.verify(token, JWT_SECRET)
 
 // confirm user with supplied JWT payload
 const confirmUser = async (payload) => {
-  const { email, api_access, jwt_uuid } = payload
+  const { email, api_access, jwt_uuid, reset_uuid } = payload
   const {
     api_access: _access,
     jwt_uuid: _uuid,
   } = await getUserInfo({ email, fields: ['api_access', 'jwt_uuid'] })
   // confirm both JWT UUID and api_access integrity
-  if (!(jwt_uuid === _uuid) || !isEqual(_access, api_access)) {
+  if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
     console.log(`[WARNING] Token payload and DB fields mismatch: ${JSON.stringify({
       email, api_access, jwt_uuid, _access, _uuid
     })}`)
@@ -73,6 +78,11 @@ const confirmUser = async (payload) => {
     error.logLevel = 'WARNING'
     throw error
   }
+  if (reset_uuid) {
+    const uuid = await resetUUID({ email })
+    return { uuid }
+  }
+  return {}
 }
 
 module.exports = {
