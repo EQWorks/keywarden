@@ -20,7 +20,7 @@ const CONNECT_OPT = {
 
 const updateOTP = async ({ email, otp }) => {
   const client = await MongoClient.connect(URI, CONNECT_OPT)
-  const hash = await bcrypt.hash(otp, HASH_ROUND)
+  const hash = bcrypt.hashSync(otp, HASH_ROUND)
   const ttl = Number(moment().add(OTP_TTL, 'ms').format('x'))
   await client.db(DB).collection(COLL).updateOne({ email }, {
     $set: {
@@ -57,7 +57,7 @@ const validateOTP = async ({ email, otp, reset_uuid = false }) => {
     throw error
   }
   // validate OTP
-  if (!bcrypt.compare(otp, _otp.hash || '')) {
+  if (!bcrypt.compareSync(otp, _otp.hash || '')) {
     const error = new Error(`Invalid passcode for ${email}`)
     error.statusCode = 403
     error.logLevel = 'WARNING'
