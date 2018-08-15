@@ -1,20 +1,18 @@
-const { Pool } = require('pg')
 const bcrypt = require('bcryptjs')
 const uuidv4 = require('uuid/v4')
 const moment = require('moment')
+
+const db = require('./db')
 
 const {
   HASH_ROUND = 10,
   OTP_TTL = 5 * 60 * 1000,
 } = process.env
 
-// https://node-postgres.com/features/connecting#environment-variables
-const pool = new Pool()
-
 const updateOTP = async ({ email, otp }) => {
   const hash = bcrypt.hashSync(otp, HASH_ROUND)
   const ttl = Number(moment().add(OTP_TTL, 'ms').format('x'))
-  const { rowCount } = await pool.query(`
+  const { rowCount } = await db.query(`
     UPDATE equsers
     SET otp = $1
     WHERE email = $2;
@@ -29,7 +27,7 @@ const updateOTP = async ({ email, otp }) => {
 }
 
 const getUserInfo = async ({ email, product='atom', otp=false }) => {
-  const { rows=[] } = await pool.query(`
+  const { rows=[] } = await db.query(`
     SELECT
       prefix,
       jwt_uuid,
@@ -82,7 +80,7 @@ const validateOTP = async ({ email, otp, reset_uuid = false }) => {
     updates.push(`jwt_uuid = '${jwt_uuid}'`)
   }
   // update user
-  await pool.query(`
+  await db.query(`
     UPDATE equsers
     SET ${updates.join(',')}
     WHERE email = $1;
@@ -92,7 +90,7 @@ const validateOTP = async ({ email, otp, reset_uuid = false }) => {
 
 const resetUUID = async ({ email }) => {
   const jwt_uuid = uuidv4()
-  await pool.query(`
+  await db.query(`
     UPDATE equsers
     SET jwt_uuid = $2
     WHERE email = $1;
