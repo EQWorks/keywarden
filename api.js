@@ -6,7 +6,10 @@ const {
   verifyOTP,
   verifyJWT,
   confirmUser,
-} = require('./modules/auth.js')
+} = require('./modules/auth')
+const {
+  getUsers,
+} = require('./modules/manage')
 
 const api = express.Router()
 
@@ -126,6 +129,16 @@ api.get('/refresh', hasTokenFields(
     const message = `Token refreshed for user ${email}, please store and use the token responsibly`
     console.log(`[INFO] ${message}`)
     return res.json({ message, token, user: email })
+  }).catch(next)
+})
+
+// GET /manage/list
+api.get('/manage/list', hasTokenFields(
+  'email', 'api_access', 'jwt_uuid'
+), (req, res, next) => {
+  const { userInfo: payload } = req
+  confirmUser(payload).then(getUsers).then((users) => {
+    return res.json({ users })
   }).catch(next)
 })
 

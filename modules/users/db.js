@@ -27,6 +27,18 @@ const getUser = (email, ...selects) => {
   `, [email])
 }
 
+const listUsers = async ({ selects, conditions }) => {
+  const text = `
+    SELECT ${selects.join(',')}
+    FROM equsers
+    WHERE ${conditions.join(' AND ')};
+  `
+  // TODO: remove this
+  console.log(text)
+  const { rows=[] } = await pool.query(text)
+  return rows
+}
+
 const insertUser = ({ email, ...props }) => {
   _checkEmpty({ email })
   const entries = Object.entries({ email, ...props})
@@ -80,6 +92,7 @@ const removeUser = ({ email, hard=false }) => {
 
 module.exports = {
   getUser,
+  listUsers,
   insertUser,
   updateUser,
   removeUser,

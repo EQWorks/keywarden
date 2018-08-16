@@ -74,9 +74,6 @@ const confirmUser = async (payload) => {
   } = userInfo
   // confirm both JWT UUID and api_access integrity
   if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
-    console.log(`[WARNING] Token payload and DB fields mismatch: ${JSON.stringify({
-      email, api_access, jwt_uuid, _access, _uuid
-    })}`)
     const error = new Error(`Token payload no longer valid for user ${email}`)
     error.statusCode = 403
     error.logLevel = 'WARNING'
