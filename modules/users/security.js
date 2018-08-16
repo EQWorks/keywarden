@@ -2,7 +2,10 @@ const bcrypt = require('bcryptjs')
 const uuidv4 = require('uuid/v4')
 const moment = require('moment')
 
-const db = require('./db')
+const {
+  updateUser,
+  getUser,
+} = require('./manage')
 
 const {
   HASH_ROUND = 10,
@@ -12,32 +15,22 @@ const {
 const updateOTP = async ({ email, otp }) => {
   const hash = bcrypt.hashSync(otp, HASH_ROUND)
   const ttl = Number(moment().add(OTP_TTL, 'ms').format('x'))
-  const { rowCount } = await db.query(`
-    UPDATE equsers
-    SET otp = $1
-    WHERE email = $2;
-  `, [{ hash, ttl }, email])
-  if (rowCount === 0) {
-    const error = new Error(`User ${email} not found`)
-    error.statusCode = 404
-    error.logLevel = 'WARNING'
-    throw error
-  }
+  await updateUser({ email, otp: { hash, ttl }})
   return ttl
 }
 
 const getUserInfo = async ({ email, product='atom', otp=false }) => {
-  const { rows=[] } = await db.query(`
-    SELECT
-      prefix,
-      jwt_uuid,
-      whitelabels,
-      customers,
-      ${product}
-      ${otp ? ',otp': ''}
-    FROM equsers
-    WHERE email = $1;
-  `, [email])
+  const selects = [
+    'prefix',
+    'jwt_uuid',
+    'whitelabels',
+    'customers',
+    product,
+  ]
+  if (otp) {
+    selects.push('otp')
+  }
+  const { rows=[] } = await getUser(email, ...selects)
   const userInfo = rows[0] || {}
   return {
     ...userInfo,
@@ -73,28 +66,19 @@ const validateOTP = async ({ email, otp, reset_uuid = false }) => {
     throw error
   }
   // unset OTP from user
-  const updates = ["otp = '{}'::jsonb"]
+  const updates = { otp: {} }
   // set `jwt_uuid` if not set already
   if (reset_uuid || !jwt_uuid) {
     jwt_uuid = uuidv4()
-    updates.push(`jwt_uuid = '${jwt_uuid}'`)
+    updates['jwt_uuid'] = jwt_uuid
   }
-  // update user
-  await db.query(`
-    UPDATE equsers
-    SET ${updates.join(',')}
-    WHERE email = $1;
-  `, [email])
+  await updateUser({ email, ...updates })
   return { api_access, jwt_uuid }
 }
 
 const resetUUID = async ({ email }) => {
   const jwt_uuid = uuidv4()
-  await db.query(`
-    UPDATE equsers
-    SET jwt_uuid = $2
-    WHERE email = $1;
-  `, [email, jwt_uuid])
+  await updateUser({ email, jwt_uuid })
   return jwt_uuid
 }
 

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.equsers (
     locus jsonb DEFAULT '{}'::jsonb,
     info jsonb DEFAULT '{}'::jsonb,
     otp jsonb DEFAULT '{}'::jsonb,
+    active bit DEFAULT '1'::bit,
     PRIMARY KEY(email)
 );
 

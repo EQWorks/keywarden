@@ -12,7 +12,7 @@ const {
   validateOTP,
   getUserInfo,
   resetUUID,
-} = require('./users.js')
+} = require('./users/security.js')
 
 const {
   JWT_SECRET,
