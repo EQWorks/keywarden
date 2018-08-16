@@ -5,7 +5,7 @@ const moment = require('moment')
 const {
   updateUser,
   getUser,
-} = require('./manage')
+} = require('./db')
 
 const {
   HASH_ROUND = 10,
