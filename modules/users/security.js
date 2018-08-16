@@ -23,8 +23,6 @@ const getUserInfo = async ({ email, product='atom', otp=false }) => {
   const selects = [
     'prefix',
     'jwt_uuid',
-    'whitelabels',
-    'customers',
     product,
   ]
   if (otp) {
@@ -35,11 +33,7 @@ const getUserInfo = async ({ email, product='atom', otp=false }) => {
   return {
     ...userInfo,
     [product]: product,
-    api_access: {
-      ...userInfo[product],
-      wl: userInfo.whitelabels || [],
-      customers: userInfo.customers || [],
-    },
+    api_access: userInfo[product],
   }
 }
 

@@ -1,3 +1,6 @@
+/**
+ * Authentication and authorization workflow
+ */
 const url = require('url')
 
 const jwt = require('jsonwebtoken')
@@ -64,10 +67,11 @@ const verifyJWT = (token) => jwt.verify(token, JWT_SECRET)
 // confirm user with supplied JWT payload
 const confirmUser = async (payload) => {
   const { email, api_access, jwt_uuid, reset_uuid } = payload
+  const userInfo = await getUserInfo({ email })
   const {
     api_access: _access,
     jwt_uuid: _uuid,
-  } = await getUserInfo({ email })
+  } = userInfo
   // confirm both JWT UUID and api_access integrity
   if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
     console.log(`[WARNING] Token payload and DB fields mismatch: ${JSON.stringify({
@@ -80,9 +84,9 @@ const confirmUser = async (payload) => {
   }
   if (reset_uuid) {
     const uuid = await resetUUID({ email })
-    return { uuid }
+    return { ...userInfo, uuid }
   }
-  return {}
+  return userInfo
 }
 
 module.exports = {
