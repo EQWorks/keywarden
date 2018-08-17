@@ -8,6 +8,7 @@ const {
   confirmUser,
 } = require('./modules/auth')
 const {
+  getUser,
   getUsers,
 } = require('./modules/manage')
 
@@ -132,6 +133,19 @@ api.get('/refresh', hasTokenFields(
   }).catch(next)
 })
 
+// GET /manage
+api.get('/manage', hasTokenFields(
+  'email', 'api_access', 'jwt_uuid'
+), (req, res, next) => {
+  const { userInfo: payload } = req
+  const { product, user: email } = req.query
+  confirmUser(payload).then(({ prefix, api_access }) => {
+    return getUser({ email, prefix, api_access, product })
+  }).then(({ user }) => {
+    return res.json({ user })
+  }).catch(next)
+})
+
 // GET /manage/list
 api.get('/manage/list', hasTokenFields(
   'email', 'api_access', 'jwt_uuid'
@@ -140,7 +154,7 @@ api.get('/manage/list', hasTokenFields(
   const { product } = req.query
   confirmUser(payload).then(({ prefix, api_access }) => {
     return getUsers({ prefix, api_access, product })
-  }).then((users) => {
+  }).then(({ users }) => {
     return res.json({ users })
   }).catch(next)
 })

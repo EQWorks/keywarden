@@ -18,25 +18,26 @@ const _checkEmpty = ({ ...params }) => {
   }
 }
 
-const getUser = (email, ...selects) => {
+const getUser = async ({ email, selects, conditions=[] }) => {
   _checkEmpty({ email })
-  return pool.query(`
+  const { rows=[] } = await pool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
-    WHERE email = $1;
+    WHERE email = $1
+      ${isEmpty(conditions) ? '' : `AND ${conditions.join(' AND ')}`}
+    LIMIT 1;
   `, [email])
+  const user = rows[0] || {}
+  return { user }
 }
 
 const listUsers = async ({ selects, conditions }) => {
-  const text = `
+  const { rows: users=[] } = await pool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     WHERE ${conditions.join(' AND ')};
-  `
-  // TODO: remove this
-  console.log(text)
-  const { rows=[] } = await pool.query(text)
-  return rows
+  `)
+  return { users }
 }
 
 const insertUser = ({ email, ...props }) => {
@@ -96,4 +97,6 @@ module.exports = {
   insertUser,
   updateUser,
   removeUser,
+  // intended mostly for select queries
+  query: (...params) => pool.query(...params),
 }

@@ -3,10 +3,10 @@
  */
 const {
   listUsers,
+  getUser: _getUser,
 } = require('./db')
 
-// list users that the given user (email) has access to
-const getUsers = ({ prefix, api_access, product='atom' }) => {
+const _getConditions = ({ prefix, api_access, product='atom' }) => {
   // derive select conditions based on prefix and api_access
   const {
     wl=[],
@@ -33,11 +33,24 @@ const getUsers = ({ prefix, api_access, product='atom' }) => {
       AND coalesce((${product}->>'write')::integer, 0) <= ${write}
     )`)
   }
-  // relatively fixed selects for now
+  return conditions
+}
+
+// list users that the given user (email) has access to
+const getUsers = ({ prefix, api_access, product='atom' }) => {
+  const conditions = _getConditions({ prefix, api_access, product })
   const selects = ['email', 'prefix', 'client', product]
   return listUsers({ selects, conditions })
 }
 
+// get a user by email that the given user (email) has access to
+const getUser = ({ email, prefix, api_access, product='atom' }) => {
+  const conditions = _getConditions({ prefix, api_access, product })
+  const selects = ['email', 'prefix', 'client', product]
+  return _getUser({ email, selects, conditions })
+}
+
 module.exports = {
   getUsers,
+  getUser,
 }

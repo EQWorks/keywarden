@@ -36,14 +36,13 @@ const _getUserInfo = async ({ email, product='atom', otp=false }) => {
   if (otp) {
     selects.push('otp')
   }
-  const { rows=[] } = await getUser(email, ...selects)
-  const userInfo = rows[0] || {}
+  const { user } = await getUser({ email, selects })
   return {
-    ...userInfo,
+    ...user,
     [product]: product,
     api_access: {
-      ...userInfo.client,
-      ...userInfo[product]
+      ...user.client,
+      ...user[product]
     },
   }
 }
