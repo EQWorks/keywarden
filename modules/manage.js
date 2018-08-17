@@ -3,10 +3,7 @@
  */
 const {
   listUsers,
-  insertUser,
-  updateUser,
-  removeUser,
-} = require('./users/db')
+} = require('./db')
 
 // list users that the given user (email) has access to
 const getUsers = ({ prefix, api_access, product='atom' }) => {
@@ -19,25 +16,25 @@ const getUsers = ({ prefix, api_access, product='atom' }) => {
   } = api_access
   const conditions = []
   if (prefix === 'wl') {
-    conditions.push(`${product}->'wl' <@ '${JSON.stringify(wl)}'::jsonb`)
+    conditions.push(`client->'wl' <@ '${JSON.stringify(wl)}'::jsonb`)
     conditions.push(`(
       (
         prefix = 'wl'
-        AND (${product}->>'read')::integer <= ${read}
-        AND (${product}->>'write')::integer <= ${write}
+        AND coalesce((${product}->>'read')::integer, 0) <= ${read}
+        AND coalesce((${product}->>'write')::integer, 0) <= ${write}
       )
       OR prefix = 'customers'
     )`)
-  } else if (prefix === 'customers' && cu !== -1 && cu.length) {
-    conditions.push(`${product}->'customers' <@ '${JSON.stringify(customers)}'::jsonb`)
+  } else if (prefix === 'customers') {
+    conditions.push(`client->'customers' <@ '${JSON.stringify(customers)}'::jsonb`)
     conditions.push(`(
       prefix = 'customers'
-      AND (${product}->>'read')::integer <= ${read}
-      AND (${product}->>'write')::integer <= ${write}
+      AND coalesce((${product}->>'read')::integer, 0) <= ${read}
+      AND coalesce((${product}->>'write')::integer, 0) <= ${write}
     )`)
   }
   // relatively fixed selects for now
-  const selects = ['email', 'prefix', product]
+  const selects = ['email', 'prefix', 'client', product]
   return listUsers({ selects, conditions })
 }
 

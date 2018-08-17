@@ -1,4 +1,11 @@
-module.exports.magicLinkHTML = (magicLink, otp, ttl) => (`
+const nodemailer = require('nodemailer')
+const AWS = require('aws-sdk')
+
+const sendMail = (message) => (nodemailer.createTransport({
+  SES: new AWS.SES()
+}).sendMail(message))
+
+const magicLinkHTML = (magicLink, otp, ttl) => (`
   <head>
     <style>
       /* -------------------------------------
@@ -360,9 +367,15 @@ module.exports.magicLinkHTML = (magicLink, otp, ttl) => (`
   </body>
 `)
 
-module.exports.magicLinkText = (magicLink, otp, ttl) => (`
+const magicLinkText = (magicLink, otp, ttl) => (`
   Welcome to ATOM.\n
   Please login with the magic link ${magicLink}\n
   Or manually enter: ${otp} \n
   This will expire after ${ttl}, and all previous email should be discarded.
 `)
+
+module.exports = {
+  magicLinkHTML,
+  magicLinkText,
+  sendMail,
+}

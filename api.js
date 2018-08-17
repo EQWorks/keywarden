@@ -137,7 +137,10 @@ api.get('/manage/list', hasTokenFields(
   'email', 'api_access', 'jwt_uuid'
 ), (req, res, next) => {
   const { userInfo: payload } = req
-  confirmUser(payload).then(getUsers).then((users) => {
+  const { product } = req.query
+  confirmUser(payload).then(({ prefix, api_access }) => {
+    return getUsers({ prefix, api_access, product })
+  }).then((users) => {
     return res.json({ users })
   }).catch(next)
 })
