@@ -18,7 +18,7 @@ const _checkEmpty = ({ ...params }) => {
   }
 }
 
-const getUser = async ({ email, selects, conditions=[] }) => {
+const selectUser = async ({ email, selects, conditions=[] }) => {
   _checkEmpty({ email })
   const { rows=[] } = await pool.query(`
     SELECT ${selects.join(',')}
@@ -77,7 +77,7 @@ const updateUser = async ({ email, ...updates }) => {
 }
 
 // deactivate/remove
-const removeUser = ({ email, hard=false }) => {
+const deleteUser = ({ email, hard=false }) => {
   if (hard) {
     return pool.query(`
       DELETE FROM equsers
@@ -92,11 +92,11 @@ const removeUser = ({ email, hard=false }) => {
 }
 
 module.exports = {
-  getUser,
+  selectUser,
   listUsers,
   insertUser,
   updateUser,
-  removeUser,
+  deleteUser,
   // intended mostly for select queries
   query: (...params) => pool.query(...params),
 }
