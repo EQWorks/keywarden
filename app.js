@@ -1,6 +1,7 @@
 const serverless = require('serverless-http')
 const express = require('express')
 const cors = require('cors')
+const bodyParser = require('body-parser')
 
 const api = require('./api.js')
 
@@ -11,6 +12,8 @@ app.enable('trust proxy')
 // enable CORS for endpoints and their pre-flight requests (when applicable)
 app.use(cors())
 app.options('*', cors())
+// bodyParser for json
+app.use(bodyParser.json())
 
 // mount API endpoints by stage
 app.use(`/${process.env.STAGE}`, api)

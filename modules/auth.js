@@ -10,7 +10,7 @@ const moment = require('moment-timezone')
 const { isEqual } = require('lodash')
 
 const { sendMail, magicLinkHTML, magicLinkText } = require('./email.js')
-const { updateUser, getUser } = require('./db')
+const { updateUser, selectUser } = require('./db')
 
 const {
   HASH_ROUND = 10,
@@ -36,7 +36,7 @@ const _getUserInfo = async ({ email, product='atom', otp=false }) => {
   if (otp) {
     selects.push('otp')
   }
-  const { user } = await getUser({ email, selects })
+  const { user } = await selectUser({ email, selects })
   return {
     ...user,
     [product]: product,

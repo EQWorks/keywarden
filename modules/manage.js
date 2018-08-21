@@ -151,7 +151,7 @@ const editUser = ({
 }
 
 // deactivate/delete a user
-const deleteUser = ({ userInfo, prefix, api_access, hard=false }) => {
+const removeUser = ({ userInfo, prefix, api_access, hard=false }) => {
   _checkUserInfo({ userInfo, prefix, api_access })
   const { email } = userInfo
   return deleteUser({ email, hard })
@@ -161,5 +161,5 @@ module.exports = {
   getUsers,
   getUser,
   editUser,
-  deleteUser,
+  removeUser,
 }
