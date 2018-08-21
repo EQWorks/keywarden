@@ -64,12 +64,12 @@ const getUser = ({ email, prefix, api_access, product='atom' }) => {
 
 const _checkPrefix = ({ userPrefix, prefix }) => {
   if (prefix === 'wl') {
-    return ['wl', 'customers'].includes(userPrefix)
+    return !userPrefix || ['wl', 'customers'].includes(userPrefix)
   }
   if (prefix === 'customers') {
-    return userPrefix === 'customers'
+    return !userPrefix || userPrefix === 'customers'
   }
-  return prefix === 'internal'
+  return !userPrefix || prefix === 'internal'
 }
 
 const _checkAccess = ({ userAccess, access }) => {

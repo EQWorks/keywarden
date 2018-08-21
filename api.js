@@ -134,8 +134,8 @@ api.get('/refresh', hasTokenFields(
   }).catch(next)
 })
 
-// GET /manage
-api.get('/manage', hasTokenFields(
+// GET /users
+api.get('/users', hasQueryParams('user'), hasTokenFields(
   'email', 'api_access', 'jwt_uuid'
 ), (req, res, next) => {
   const { userInfo: payload } = req
@@ -147,8 +147,8 @@ api.get('/manage', hasTokenFields(
   }).catch(next)
 })
 
-// GET /manage/list
-api.get('/manage/list', hasTokenFields(
+// GET /users/list
+api.get('/users/list', hasTokenFields(
   'email', 'api_access', 'jwt_uuid'
 ), (req, res, next) => {
   const { userInfo: payload } = req
@@ -160,22 +160,26 @@ api.get('/manage/list', hasTokenFields(
   }).catch(next)
 })
 
-// POST /manage
-api.post('/manage', hasTokenFields(
+// POST /users
+api.post('/users', hasTokenFields(
   'email', 'api_access', 'jwt_uuid'
 ), (req, res, next) => {
   const { userInfo: payload } = req
-  const { product, user } = req.query
+  const { user, product='atom', update=true } = req.query
+  const userInfo = { ...(req.body || {}) }
+  userInfo.email = userInfo.email || user
   confirmUser(payload).then(({ prefix, api_access }) => {
     return editUser({
-      userInfo: req.body || {},
+      userInfo,
       prefix,
       api_access,
       product,
       newUser: !user,
     })
-  }).then(({ users }) => {
-    return res.json({ users })
+  }).then(() => {
+    return res.json({
+      message: `User ${userInfo.email} ${user ? 'updated' : 'created'}`
+    })
   }).catch(next)
 })
 
