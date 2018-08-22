@@ -131,6 +131,7 @@ const editUser = ({
   const {
     email,
     api_access: _access={},
+    prefix: _prefix=prefix,
   } = userInfo
   const {
     wl=[],
@@ -140,7 +141,7 @@ const editUser = ({
   } = _access
   const user = {
     email,
-    prefix,
+    prefix: _prefix,
     [product]: { read, write },
     client: { wl, customers },
   }

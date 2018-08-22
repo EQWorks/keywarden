@@ -174,13 +174,16 @@ api.post('/users', hasTokenFields(
       prefix,
       api_access,
       product,
-      newUser: !user,
+      newUser: !update,
     })
   }).then(() => {
     return res.json({
-      message: `User ${userInfo.email} ${user ? 'updated' : 'created'}`
+      message: `User ${userInfo.email} ${update ? 'updated' : 'created'}`
     })
   }).catch(next)
 })
+
+// delete
+// api.delete('/users')
 
 module.exports = api

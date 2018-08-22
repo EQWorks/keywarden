@@ -61,7 +61,8 @@ const updateUser = async ({ email, ...updates }) => {
     WHERE email = $1;
   `, [email, ...entries.map((a) => a[1])])
   if (rowCount === 1) {
-    return await pool.query('COMMIT;')
+    await pool.query('COMMIT;')
+    return rowCount
   }
   let error
   if (rowCount === 0) {
