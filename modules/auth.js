@@ -39,6 +39,7 @@ const _getUserInfo = async ({ email, product='atom', otp=false }) => {
   const { user } = await selectUser({ email, selects })
   return {
     ...user,
+    email,
     [product]: product,
     api_access: {
       ...user.client,
@@ -143,7 +144,7 @@ const confirmUser = async (payload) => {
   }
   if (reset_uuid) {
     const uuid = await _resetUUID({ email })
-    return { ...userInfo, uuid }
+    return { ...userInfo, jwt_uuid: uuid }
   }
   return userInfo
 }

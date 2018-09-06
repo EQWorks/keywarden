@@ -3,7 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 
-const api = require('./api.js')
+const api = require('./api')
 
 // express app
 const app = express()
@@ -27,6 +27,7 @@ app.use((err, req, res, next) => {
   logLevel = logLevel || 'ERROR'
   statusCode = statusCode || 500
   // app log
+  // eslint-disable-next-line no-console
   console.log(`[${logLevel}] - ${statusCode} - ${message}`)
   if (logLevel === 'ERROR') {
     console.error(`[ERROR] ${message}`, err.stack || err)
@@ -41,6 +42,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   app.listen(3333, () => {
+    // eslint-disable-next-line no-console
     console.log('Listening on port 3333')
   })
 } else {

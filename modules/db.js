@@ -40,15 +40,26 @@ const listUsers = async ({ selects, conditions }) => {
   return { users }
 }
 
-const insertUser = ({ email, ...props }) => {
+const insertUser = async ({ email, ...props }) => {
   _checkEmpty({ email })
   const entries = Object.entries({ email, ...props})
-  return pool.query(`
-    INSERT INTO equsers
-      (${entries.map(([ k ]) => k).join(',')})
-    VALUES
-      (${entries.map((_, i) => `$${i + 1}`).join(',')}));
-  `, entries.map((a) => a[1]))
+  try {
+    await pool.query(`
+      INSERT INTO equsers
+        (${entries.map(([ k ]) => k).join(',')})
+      VALUES
+        (${entries.map((_, i) => `$${i + 1}`).join(',')});
+    `, entries.map((a) => a[1]))
+  } catch(e) {
+    // https://www.postgresql.org/docs/current/static/errcodes-appendix.html
+    if (e.code === '23505') {
+      const error = new Error(`user ${email} already exists`)
+      error.statusCode = 400
+      error.logLevel = 'WARNING'
+      throw error
+    }
+    throw e
+  }
 }
 
 const updateUser = async ({ email, ...updates }) => {

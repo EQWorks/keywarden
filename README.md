@@ -2,6 +2,12 @@
 
 Central auth service.
 
+## Local Development
+
+This project is written in Node.js stack.
+
+Make sure to install [`print-env`](https://pypi.org/project/print-env/) (requires Python) for environment variables loader to work.
+
 ## Workflow
 
 ### Login
