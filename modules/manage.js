@@ -8,11 +8,7 @@ const {
   updateUser,
   deleteUser,
 } = require('./db')
-const RESOURCES = [
-  'read',
-  'write',
-  'fin',
-]
+const RESOURCES = ['read', 'write', 'fin']
 
 const _getConditions = ({ prefix, api_access, product='atom' }) => {
   // derive select conditions based on prefix and api_access

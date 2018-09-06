@@ -64,4 +64,15 @@ router.get('/refresh', confirmed, (req, res) => {
   })
 })
 
+// GET /access
+router.get('/access', confirmed, (req, res) => {
+  const { email: user, api_access, jwt_uuid, product } = req.userInfo
+  return res.json({
+    user,
+    api_access,
+    jwt_uuid,
+    product,
+  })
+})
+
 module.exports = router

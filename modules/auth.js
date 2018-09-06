@@ -40,7 +40,7 @@ const _getUserInfo = async ({ email, product='atom', otp=false }) => {
   return {
     ...user,
     email,
-    [product]: product,
+    product,
     api_access: {
       ...user.client,
       ...user[product]
@@ -48,7 +48,7 @@ const _getUserInfo = async ({ email, product='atom', otp=false }) => {
   }
 }
 
-const _validateOTP = async ({ email, otp, reset_uuid = false }) => {
+const _validateOTP = async ({ email, otp, reset_uuid=false }) => {
   const userInfo = await _getUserInfo({ email, otp: true })
   const {
     otp: _otp={},
@@ -129,8 +129,8 @@ const verifyJWT = (token) => jwt.verify(token, JWT_SECRET)
 
 // confirm user with supplied JWT payload
 const confirmUser = async (payload) => {
-  const { email, api_access, jwt_uuid, reset_uuid } = payload
-  const userInfo = await _getUserInfo({ email })
+  const { email, api_access, jwt_uuid, reset_uuid, product } = payload
+  const userInfo = await _getUserInfo({ email, product })
   const {
     api_access: _access,
     jwt_uuid: _uuid,

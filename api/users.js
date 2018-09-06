@@ -43,15 +43,25 @@ router.put('/', hasQueryParams('user'), confirmed, (req, res, next) => {
   }).catch(next)
 })
 
+// PUT /users/deactivate
+router.put('/deactivate', confirmed, (req, res, next) => {
+  const { userInfo: { prefix, api_access } = {} } = req
+  const { product, user: email } = req.query
+  getUser({ email, prefix, api_access, product }).then(({ user: userInfo }) => {
+    return removeUser({ prefix, api_access, userInfo, hard: false })
+  }).then(() => {
+    return res.json({ message: `User ${email} deactivated` })
+  }).catch(next)
+})
+
 // delete
 router.delete('/', confirmed, (req, res, next) => {
   const { userInfo: { prefix, api_access } = {} } = req
-  const { hard, product, user: email } = req.query
-  const deactivate = !['1', 'true'].includes(hard)
-  getUser({ email, prefix, api_access, product }).then((r) => {
-    return removeUser({ prefix, api_access, userInfo: r, hard: !deactivate })
+  const { product, user: email } = req.query
+  getUser({ email, prefix, api_access, product }).then(({ user: userInfo }) => {
+    return removeUser({ prefix, api_access, userInfo, hard: true })
   }).then(() => {
-    return res.json({ message: `User ${email} ${deactivate ? 'deactivated' : 'deleted'}` })
+    return res.json({ message: `User ${email} deleted` })
   }).catch(next)
 })
 
