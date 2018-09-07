@@ -1,7 +1,7 @@
 const { verifyJWT, confirmUser } = require('../modules/auth')
 
 // JWT confirmation middleware
-const confirmed = ({ allowLight = false }) => (req, res, next) => {
+const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
   const { light, reset_uuid, product = 'atom' } = req.query
   const fields = ['email', 'api_access', 'jwt_uuid']
   const token = req.get('eq-api-jwt')

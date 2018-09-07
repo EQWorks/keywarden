@@ -121,6 +121,13 @@ const deactivateUser = ({ userInfo, prefix, api_access }) => {
   return updateUser({ email, jwt_uuid: null, active: 0 })
 }
 
+// activate a user (special case editUser)
+const activateUser = ({ userInfo, prefix, api_access }) => {
+  _canManage({ userInfo, prefix, api_access })
+  const { email } = userInfo
+  return updateUser({ email, active: 1 })
+}
+
 module.exports = {
   getUsers,
   getUser,
@@ -128,4 +135,5 @@ module.exports = {
   editUser,
   removeUser,
   deactivateUser,
+  activateUser,
 }

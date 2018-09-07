@@ -9,6 +9,7 @@ const {
   editUser,
   removeUser,
   deactivateUser,
+  activateUser,
 } = require('../modules/manage')
 const { confirmed, hasQueryParams } = require('./middleware')
 
@@ -54,6 +55,20 @@ router.put('/', hasQueryParams('user'), confirmed(), (req, res, next) => {
   editUser({ userInfo, prefix, api_access, product })
     .then(() => {
       return res.json({ message: `User ${user} updated` })
+    })
+    .catch(next)
+})
+
+// PUT /users/activate
+router.put('/activate', confirmed(), (req, res, next) => {
+  const { userInfo: { prefix, api_access } = {} } = req
+  const { product, user: email } = req.query
+  getUser({ email, prefix, api_access, product })
+    .then(({ user: userInfo }) => {
+      return activateUser({ userInfo, prefix, api_access })
+    })
+    .then(() => {
+      return res.json({ message: `User ${email} activated` })
     })
     .catch(next)
 })

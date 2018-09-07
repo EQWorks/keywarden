@@ -64,8 +64,8 @@ const fullCheck = ({ target, me }) => {
   // check clients
   for (const name of Object.keys(targetClients)) {
     checkClient({
-      targetClient: targetClients[name],
-      client: clients[name],
+      targetClient: targetClients[name] || [],
+      client: clients[name] || [],
       name,
     })
   }
