@@ -88,19 +88,11 @@ const updateUser = async ({ email, ...updates }) => {
   throw error
 }
 
-// deactivate/remove
-const deleteUser = ({ email, hard=false }) => {
-  if (hard) {
-    return pool.query(`
-      DELETE FROM equsers
-      WHERE email = $1;
-    `, [email])
-  }
-  return updateUser({
-    email,
-    jwt_uuid: null,
-    active: 0,
-  })
+const deleteUser = (email) => {
+  return pool.query(`
+    DELETE FROM equsers
+    WHERE email = $1;
+  `, [email])
 }
 
 module.exports = {

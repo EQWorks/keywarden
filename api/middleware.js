@@ -1,15 +1,15 @@
 const { verifyJWT, confirmUser } = require('../modules/auth')
 
 // JWT confirmation middleware
-const confirmed = (req, res, next) => {
-  const { light, reset_uuid, product='atom' } = req.query
+const confirmed = ({ allowLight = false }) => (req, res, next) => {
+  const { light, reset_uuid, product = 'atom' } = req.query
   const fields = ['email', 'api_access', 'jwt_uuid']
   const token = req.get('eq-api-jwt')
   let user
   // preliminary jwt verify
   try {
     user = verifyJWT(token)
-  } catch(err) {
+  } catch (err) {
     console.error(`[ERROR] ${err.message}`, err.stack || err)
     const error = new Error(`Invalid JWT: ${token}`)
     error.statusCode = 403
@@ -24,7 +24,7 @@ const confirmed = (req, res, next) => {
     return next(error)
   }
   // DB integrity check
-  if (['1', 'true'].includes(light)) {
+  if (allowLight && ['1', 'true'].includes(light)) {
     req.userInfo = { ...user, light: true }
     return next()
   }
@@ -32,10 +32,12 @@ const confirmed = (req, res, next) => {
     ...user,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
     product,
-  }).then((userInfo) => {
-    req.userInfo = { ...userInfo, light: false }
-    return next()
-  }).catch(next)
+  })
+    .then(userInfo => {
+      req.userInfo = { ...userInfo, light: false }
+      return next()
+    })
+    .catch(next)
 }
 
 // query parameter check middleware

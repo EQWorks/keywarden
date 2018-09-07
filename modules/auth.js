@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs')
 const uuidv4 = require('uuid/v4')
 const jwt = require('jsonwebtoken')
 const moment = require('moment-timezone')
-const { isEqual } = require('lodash')
+const isEqual = require('lodash.isequal')
 
 const { sendMail, magicLinkHTML, magicLinkText } = require('./email.js')
 const { updateUser, selectUser } = require('./db')
@@ -21,18 +21,17 @@ const {
 
 const _updateOTP = async ({ email, otp }) => {
   const hash = bcrypt.hashSync(otp, HASH_ROUND)
-  const ttl = Number(moment().add(OTP_TTL, 'ms').format('x'))
-  await updateUser({ email, otp: { hash, ttl }})
+  const ttl = Number(
+    moment()
+      .add(OTP_TTL, 'ms')
+      .format('x')
+  )
+  await updateUser({ email, otp: { hash, ttl } })
   return ttl
 }
 
-const _getUserInfo = async ({ email, product='atom', otp=false }) => {
-  const selects = [
-    'prefix',
-    'jwt_uuid',
-    'client',
-    product,
-  ]
+const _getUserInfo = async ({ email, product = 'atom', otp = false }) => {
+  const selects = ['prefix', 'jwt_uuid', 'client', product]
   if (otp) {
     selects.push('otp')
   }
@@ -43,17 +42,14 @@ const _getUserInfo = async ({ email, product='atom', otp=false }) => {
     product,
     api_access: {
       ...user.client,
-      ...user[product]
+      ...user[product],
     },
   }
 }
 
-const _validateOTP = async ({ email, otp, reset_uuid=false }) => {
+const _validateOTP = async ({ email, otp, reset_uuid = false }) => {
   const userInfo = await _getUserInfo({ email, otp: true })
-  const {
-    otp: _otp={},
-    api_access={},
-  } = userInfo
+  const { otp: _otp = {}, api_access = {} } = userInfo
   let { jwt_uuid } = userInfo
   // check OTP expiration
   const now = Number(moment().format('x'))
@@ -92,7 +88,7 @@ const _resetUUID = async ({ email }) => {
 const _genOTP = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 
 // update user OTP and send it along with TTL through email
-const loginUser = async ({ user, redirect, zone='utc' }) => {
+const loginUser = async ({ user, redirect, zone = 'utc' }) => {
   // generate and update user OTP, get TTL
   const otp = _genOTP()
   let ttl = await _updateOTP({ email: user, otp })
@@ -117,24 +113,25 @@ const loginUser = async ({ user, redirect, zone='utc' }) => {
   return sendMail(message)
 }
 
-const signJWT = (userInfo) => (jwt.sign(userInfo, JWT_SECRET, { expiresIn }))
+const signJWT = userInfo => jwt.sign(userInfo, JWT_SECRET, { expiresIn })
 
 // verify user OTP and sign JWT on success
 const verifyOTP = async ({ user: email, otp, reset_uuid = false }) => {
-  const { api_access, jwt_uuid } = await _validateOTP({ email, otp, reset_uuid })
+  const { api_access, jwt_uuid } = await _validateOTP({
+    email,
+    otp,
+    reset_uuid,
+  })
   return signJWT({ email, api_access, jwt_uuid })
 }
 
-const verifyJWT = (token) => jwt.verify(token, JWT_SECRET)
+const verifyJWT = token => jwt.verify(token, JWT_SECRET)
 
 // confirm user with supplied JWT payload
-const confirmUser = async (payload) => {
+const confirmUser = async payload => {
   const { email, api_access, jwt_uuid, reset_uuid, product } = payload
   const userInfo = await _getUserInfo({ email, product })
-  const {
-    api_access: _access,
-    jwt_uuid: _uuid,
-  } = userInfo
+  const { api_access: _access, jwt_uuid: _uuid } = userInfo
   // confirm both JWT UUID and api_access integrity
   if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
     const error = new Error(`Token payload no longer valid for user ${email}`)

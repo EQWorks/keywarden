@@ -14,16 +14,16 @@
   "author": "woozyking",
   "license": "UNLICENSED",
   "dependencies": {
-    "aws-sdk": "^2.287.0",
+    "aws-sdk": "^2.310.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.18.3",
     "cors": "^2.8.4",
     "express": "^4.16.3",
     "jsonwebtoken": "^8.3.0",
-    "lodash": "^4.17.10",
     "lodash.isempty": "^4.4.0",
+    "lodash.isequal": "^4.5.0",
     "moment-timezone": "^0.5.21",
-    "nodemailer": "^4.6.7",
+    "nodemailer": "^4.6.8",
     "pg": "^7.4.3",
     "serverless-http": "^1.6.0",
     "uuid": "^3.3.2"
@@ -31,7 +31,7 @@
   "devDependencies": {
     "babel-eslint": "^8.2.6",
     "eslint": "^4.19.1",
-    "nodemon": "^1.18.3",
+    "nodemon": "^1.18.4",
     "serverless-domain-manager": "^2.6.0"
   }
 }
