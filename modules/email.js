@@ -1,14 +1,11 @@
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
 
-const sendMail = message =>
-  nodemailer
-    .createTransport({
-      SES: new AWS.SES(),
-    })
-    .sendMail(message)
+const sendMail = message => nodemailer.createTransport({
+  SES: new AWS.SES(),
+}).sendMail(message)
 
-const magicLinkHTML = (magicLink, otp, ttl) => `
+const magicLinkHTML = ({ link, otp, ttl, company }) => `
   <head>
     <style>
       /* -------------------------------------
@@ -318,7 +315,7 @@ const magicLinkHTML = (magicLink, otp, ttl) => `
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
                       <td>
-                        <h1>Welcome to ATOM</h1>
+                        <h1>Welcome to ATOM (${company})</h1>
                         <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                           <tbody>
                             <tr>
@@ -327,7 +324,7 @@ const magicLinkHTML = (magicLink, otp, ttl) => `
                                   <tbody>
                                     <tr>
                                       <td>
-                                        <a href="${magicLink}" target="_blank">Sign in with Magic Link</a>
+                                        <a href="${link}" target="_blank">Sign in with Magic Link</a>
                                       </td>
                                     </tr>
                                   </tbody>
@@ -356,7 +353,7 @@ const magicLinkHTML = (magicLink, otp, ttl) => `
                 <tr>
                   <td class="content-block">
                     <br> Have a Login issue?
-                    <a href="mailto:dev@eqworks.com?subject=ATOM Login Issue">Contact Us</a>.
+                    <a href="mailto:dev@eqworks.com?subject=ATOM (${company}) Login Issue">Contact Us</a>.
                   </td>
                 </tr>
               </table>
@@ -370,9 +367,9 @@ const magicLinkHTML = (magicLink, otp, ttl) => `
   </body>
 `
 
-const magicLinkText = (magicLink, otp, ttl) => `
-  Welcome to ATOM.\n
-  Please login with the magic link ${magicLink}\n
+const magicLinkText = ({ link, otp, ttl, company}) => `
+  Welcome to ATOM (${company})\n
+  Please login with the magic link ${link}\n
   Or manually enter: ${otp} \n
   This will expire after ${ttl}, and all previous email should be discarded.
 `

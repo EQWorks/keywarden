@@ -28,14 +28,12 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     user,
     redirect: decodeURIComponent(redirect || `${origin}/verify`),
     zone: decodeURIComponent(zone || 'utc'),
-  })
-    .then(() => {
-      return res.json({
-        message: `Login passcode sent to ${user} through email`,
-        user,
-      })
+  }).then(() => {
+    return res.json({
+      message: `Login passcode sent to ${user} through email`,
+      user,
     })
-    .catch(next)
+  }).catch(next)
 })
 
 // GET /verify
@@ -44,15 +42,13 @@ router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
   verifyOTP({
     ...req.query,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
-  })
-    .then(token => {
-      return res.json({
-        message: `User ${user} verified, please store and use the token responsibly`,
-        user,
-        token,
-      })
+  }).then(token => {
+    return res.json({
+      message: `User ${user} verified, please store and use the token responsibly`,
+      user,
+      token,
     })
-    .catch(next)
+  }).catch(next)
 })
 
 // GET /confirm

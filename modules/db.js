@@ -95,12 +95,24 @@ const deleteUser = (email) => {
   `, [email])
 }
 
+const getUserWL = (email) => pool.query(`
+  SELECT
+    wl.logo,
+    wl.sender,
+    wl.company
+  FROM whitelabel AS wl
+  INNER JOIN equsers AS u
+    ON u.client->'wl'->(0) = wl.whitelabelid::text::jsonb
+  WHERE u.email = $1;
+`, [email])
+
 module.exports = {
   selectUser,
   listUsers,
   insertUser,
   updateUser,
   deleteUser,
+  getUserWL,
   // intended mostly for select queries
   query: (...params) => pool.query(...params),
 }

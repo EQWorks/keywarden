@@ -10,7 +10,7 @@ const moment = require('moment-timezone')
 const isEqual = require('lodash.isequal')
 
 const { sendMail, magicLinkHTML, magicLinkText } = require('./email.js')
-const { updateUser, selectUser } = require('./db')
+const { updateUser, selectUser, getUserWL } = require('./db')
 
 const {
   HASH_ROUND = 10,
@@ -89,6 +89,12 @@ const _genOTP = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 
 // update user OTP and send it along with TTL through email
 const loginUser = async ({ user, redirect, zone = 'utc' }) => {
+  // get user WL info
+  const { rows=[] } = await getUserWL(user)
+  // TODO: add logo in when email template has logo
+  let { sender, company } = rows[0] || {}
+  sender = sender || 'dev@eqworks.com'
+  company = company || 'EQ Works'
   // generate and update user OTP, get TTL
   const otp = _genOTP()
   let ttl = await _updateOTP({ email: user, otp })
@@ -104,11 +110,11 @@ const loginUser = async ({ user, redirect, zone = 'utc' }) => {
   // reconstruct into the effective magic link
   link = url.format(link)
   const message = {
-    from: 'dev@eqworks.com',
+    from: sender,
     to: user,
-    subject: 'ATOM Login',
-    text: magicLinkText(link, otp, ttl),
-    html: magicLinkHTML(link, otp, ttl),
+    subject: `ATOM (${company}) Login`,
+    text: magicLinkText({ link, otp, ttl, company }),
+    html: magicLinkHTML({ link, otp, ttl, company }),
   }
   return sendMail(message)
 }
