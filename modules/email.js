@@ -5,7 +5,7 @@ const sendMail = message => nodemailer.createTransport({
   SES: new AWS.SES(),
 }).sendMail(message)
 
-const magicLinkHTML = ({ link, otp, ttl, company }) => `
+const magicLinkHTML = ({ link, otp, ttl, company, product }) => `
   <head>
     <style>
       /* -------------------------------------
@@ -315,7 +315,7 @@ const magicLinkHTML = ({ link, otp, ttl, company }) => `
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
                       <td>
-                        <h1>Welcome to ATOM (${company})</h1>
+                        <h1>Welcome to ${product} (${company})</h1>
                         <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                           <tbody>
                             <tr>
@@ -353,7 +353,7 @@ const magicLinkHTML = ({ link, otp, ttl, company }) => `
                 <tr>
                   <td class="content-block">
                     <br> Have a Login issue?
-                    <a href="mailto:dev@eqworks.com?subject=ATOM (${company}) Login Issue">Contact Us</a>.
+                    <a href="mailto:dev@eqworks.com?subject=${product} (${company}) Login Issue">Contact Us</a>.
                   </td>
                 </tr>
               </table>
@@ -367,8 +367,8 @@ const magicLinkHTML = ({ link, otp, ttl, company }) => `
   </body>
 `
 
-const magicLinkText = ({ link, otp, ttl, company}) => `
-  Welcome to ATOM (${company})\n
+const magicLinkText = ({ link, otp, ttl, company, product }) => `
+  Welcome to ${product} (${company})\n
   Please login with the magic link ${link}\n
   Or manually enter: ${otp} \n
   This will expire after ${ttl}, and all previous email should be discarded.

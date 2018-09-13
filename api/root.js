@@ -17,7 +17,7 @@ router.get('/', (req, res) => {
 
 // GET /login
 router.get('/login', hasQueryParams('user'), (req, res, next) => {
-  const { user, redirect, zone } = req.query
+  const { user, redirect, zone, product='ATOM' } = req.query
   const { STAGE } = process.env
   let origin = `${req.protocol}://${req.get('host')}`
   if (STAGE) {
@@ -28,6 +28,7 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     user,
     redirect: decodeURIComponent(redirect || `${origin}/verify`),
     zone: decodeURIComponent(zone || 'utc'),
+    product,
   }).then(() => {
     return res.json({
       message: `Login passcode sent to ${user} through email`,

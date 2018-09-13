@@ -88,7 +88,7 @@ const _resetUUID = async ({ email }) => {
 const _genOTP = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 
 // update user OTP and send it along with TTL through email
-const loginUser = async ({ user, redirect, zone = 'utc' }) => {
+const loginUser = async ({ user, redirect, zone='utc', product='ATOM' }) => {
   // get user WL info
   const { rows=[] } = await getUserWL(user)
   // TODO: add logo in when email template has logo
@@ -112,9 +112,9 @@ const loginUser = async ({ user, redirect, zone = 'utc' }) => {
   const message = {
     from: sender,
     to: user,
-    subject: `ATOM (${company}) Login`,
-    text: magicLinkText({ link, otp, ttl, company }),
-    html: magicLinkHTML({ link, otp, ttl, company }),
+    subject: `${product} (${company}) Login`,
+    text: magicLinkText({ link, otp, ttl, company, product }),
+    html: magicLinkHTML({ link, otp, ttl, company, product }),
   }
   return sendMail(message)
 }
