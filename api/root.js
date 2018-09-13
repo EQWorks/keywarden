@@ -81,11 +81,8 @@ router.get('/access', confirmed(), (req, res) => {
   } = req.userInfo
   // extract target access information
   const {
-    // meant to be 'filtered' to not use
-    /* eslint-disable no-unused-vars */
-    product,
-    light,
-    /* eslint-enable no-unused-vars */
+    product, // omitted
+    light, // omitted
     prefix: targetPrefix,
     wl: targetWL = '',
     customers: targetCustomers = '',
