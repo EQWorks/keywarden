@@ -42,7 +42,7 @@ const loginUser = async ({ user, redirect, zone='utc' }) => {
   const message = {
     from: 'dev@eqworks.com',
     to: user,
-    subject: 'ATOM Login',
+    subject: 'Your Login',
     text: magicLinkText(link, otp, ttl),
     html: magicLinkHTML(link, otp, ttl),
   }
