@@ -308,7 +308,7 @@ module.exports.magicLinkHTML = (magicLink, otp, ttl) => (`
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
                       <td>
-                        <h1>Welcome to ATOM</h1>
+                        <h1>Welcome</h1>
                         <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                           <tbody>
                             <tr>
@@ -346,7 +346,7 @@ module.exports.magicLinkHTML = (magicLink, otp, ttl) => (`
                 <tr>
                   <td class="content-block">
                     <br> Have a Login issue?
-                    <a href="mailto:dev@eqworks.com?subject=ATOM Login Issue">Contact Us</a>.
+                    <a href="mailto:dev@eqworks.com?subject=Login Issue">Contact Us</a>.
                   </td>
                 </tr>
               </table>
@@ -361,7 +361,7 @@ module.exports.magicLinkHTML = (magicLink, otp, ttl) => (`
 `)
 
 module.exports.magicLinkText = (magicLink, otp, ttl) => (`
-  Welcome to ATOM.\n
+  Welcome.\n
   Please login with the magic link ${magicLink}\n
   Or manually enter: ${otp} \n
   This will expire after ${ttl}, and all previous email should be discarded.
