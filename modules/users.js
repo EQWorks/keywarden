@@ -22,13 +22,17 @@ const updateOTP = async ({ email, otp }) => {
   const client = await MongoClient.connect(URI, CONNECT_OPT)
   const hash = bcrypt.hashSync(otp, HASH_ROUND)
   const ttl = Number(moment().add(OTP_TTL, 'ms').format('x'))
-  await client.db(DB).collection(COLL).updateOne({ email }, {
-    $set: {
-      otp: { hash, ttl }
-    }
-  })
+  const {
+    value: {
+      api_access = {}
+    } = {},
+  } = await client.db(DB).collection(COLL).findOneAndUpdate(
+    { email },
+    { $set: { otp: { hash, ttl } } },
+    { projection: { _id: false, api_access: true } },
+  )
   await client.close()
-  return ttl
+  return { ttl, api_access }
 }
 
 const validateOTP = async ({ email, otp, reset_uuid = false }) => {

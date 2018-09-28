@@ -27,9 +27,14 @@ const genOTP = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 const loginUser = async ({ user, redirect, zone='utc' }) => {
   // generate and update user OTP, get TTL
   const otp = genOTP()
-  let ttl = await updateOTP({ email: user, otp })
+  const { ttl, api_access: { wl } } = await updateOTP({ email: user, otp })
+  // determine sender email based on user WL
+  let sender = 'dev@eqworks.com'
+  if (wl !== -1 && wl.length >= 1 && wl[0] === 2) {
+    sender = 'login@adloop.digital'
+  }
   // localize TTL
-  ttl = moment.tz(ttl, zone).format('LLLL z')
+  const ttlLocal = moment.tz(ttl, zone).format('LLLL z')
   // parse given redirect
   let link = url.parse(redirect, true)
   // inject query string params
@@ -40,11 +45,11 @@ const loginUser = async ({ user, redirect, zone='utc' }) => {
   // reconstruct into the effective magic link
   link = url.format(link)
   const message = {
-    from: 'dev@eqworks.com',
+    from: sender,
     to: user,
     subject: 'Your Login',
-    text: magicLinkText(link, otp, ttl),
-    html: magicLinkHTML(link, otp, ttl),
+    text: magicLinkText(link, otp, ttlLocal),
+    html: magicLinkHTML(link, otp, ttlLocal),
   }
   return nodemailer.createTransport({
     SES: new AWS.SES()
