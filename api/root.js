@@ -75,6 +75,7 @@ router.get('/access', confirmed(), (req, res) => {
   const {
     prefix,
     api_access: { wl, customers, ...access },
+    email,
   } = req.userInfo
   // extract target access information
   const {
@@ -102,6 +103,7 @@ router.get('/access', confirmed(), (req, res) => {
     },
   })
   return res.json({
+    email,
     prefix,
     wl,
     customers,
