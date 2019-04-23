@@ -5,7 +5,7 @@
   "scripts": {
     "start": "env $(print-env dev-env.yml local-env.yml) nodemon app.js",
     "lint": "eslint --ext .js .",
-    "deploy": "npm run lint && sls deploy"
+    "deploy": "yarn lint && sls deploy"
   },
   "repository": {
     "type": "git",

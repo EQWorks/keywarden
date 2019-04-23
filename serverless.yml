@@ -28,9 +28,10 @@ provider:
   memorySize: 256
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
-    MONGO_URI: ${env:MONGO_URI}
-    MONGO_USER_DB: ${env:MONGO_USER_DB}
-    MONGO_USER_COLL: ${env:MONGO_USER_COLL}
+    PGHOST: ${env:PGHOST}
+    PGDATABASE: ${env:PGDATABASE}
+    PGUSER: ${env:PGUSER}
+    PGPASSWORD: ${env:PGPASSWORD}
     OTP_TTL: ${env:OTP_TTL}
     KEYWARDEN_VER: ${env:KEYWARDEN_VER}
     STAGE: ${opt:stage, self:provider.stage}
