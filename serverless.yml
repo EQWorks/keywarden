@@ -28,6 +28,7 @@ provider:
   memorySize: 256
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
+    README_LOCUS_SECRET: ${env:README_LOCUS_SECRET}
     PGHOST: ${env:PGHOST}
     PGDATABASE: ${env:PGDATABASE}
     PGUSER: ${env:PGUSER}

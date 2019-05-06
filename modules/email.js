@@ -253,7 +253,7 @@ const magicLinkHTML = ({ link, otp, ttl, company, product }) => `
                     <!-- Button : END -->
                   </td>
                 </tr>
-                <tr>
+                ${otp && ttl ? `<tr>
                   <td style="padding: 10px; font-family: sans-serif; font-size: 15px; line-height: 20px; color: #555555; text-align: center;">
                     <p>Or use the one-time passcode</p>
                     <p><strong>${otp}</strong></p>
@@ -263,7 +263,7 @@ const magicLinkHTML = ({ link, otp, ttl, company, product }) => `
                   <td style="padding: 10px; font-family: sans-serif; font-size: 12px; line-height: 15px; color: #888888; text-align: center;">
                     <p>This will expire after ${ttl}, and all previous email should be discarded.</p>
                   </td>
-                </tr>
+                </tr>` : ''}
               </table>
             </td>
           </tr>
@@ -301,8 +301,8 @@ const magicLinkHTML = ({ link, otp, ttl, company, product }) => `
 const magicLinkText = ({ link, otp, ttl, company, product }) => `
   Welcome to ${product} (${company})\n
   Please login with the magic link ${link}\n
-  Or manually enter: ${otp} \n
-  This will expire after ${ttl}, and all previous email should be discarded.
+  ${otp && ttl ? `Or manually enter: ${otp} \n
+  This will expire after ${ttl}, and all previous email should be discarded.` : ''}
 `
 
 module.exports = {

@@ -30,7 +30,7 @@ const _updateOTP = async ({ email, otp }) => {
   return ttl
 }
 
-const _getUserInfo = async ({ email, product = 'atom', otp = false }) => {
+const getUserInfo = async ({ email, product = 'atom', otp = false }) => {
   const selects = ['prefix', 'jwt_uuid', 'client', product]
   if (otp) {
     selects.push('otp')
@@ -48,7 +48,7 @@ const _getUserInfo = async ({ email, product = 'atom', otp = false }) => {
 }
 
 const _validateOTP = async ({ email, otp, reset_uuid = false }) => {
-  const userInfo = await _getUserInfo({ email, otp: true })
+  const userInfo = await getUserInfo({ email, otp: true })
   const { otp: _otp = {}, api_access = {} } = userInfo
   let { jwt_uuid } = userInfo
   // check OTP expiration
@@ -119,7 +119,7 @@ const loginUser = async ({ user, redirect, zone='utc', product='ATOM' }) => {
   return sendMail(message)
 }
 
-const signJWT = userInfo => jwt.sign(userInfo, JWT_SECRET, { expiresIn })
+const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn })
 
 // verify user OTP and sign JWT on success
 const verifyOTP = async ({ user: email, otp, reset_uuid = false }) => {
@@ -136,7 +136,7 @@ const verifyJWT = token => jwt.verify(token, JWT_SECRET)
 // confirm user with supplied JWT payload
 const confirmUser = async payload => {
   const { email, api_access, jwt_uuid, reset_uuid, product } = payload
-  const userInfo = await _getUserInfo({ email, product })
+  const userInfo = await getUserInfo({ email, product })
   const { api_access: _access, jwt_uuid: _uuid } = userInfo
   // confirm both JWT UUID and api_access integrity
   if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
@@ -158,4 +158,5 @@ module.exports = {
   verifyOTP,
   verifyJWT,
   confirmUser,
+  getUserInfo,
 }
