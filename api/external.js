@@ -9,7 +9,22 @@ const { sendMail, magicLinkHTML, magicLinkText } = require('../modules/email.js'
 const { README_LOCUS_SECRET } = process.env
 
 
-// GET /readme/login
+// GET /readme direct link generation
+router.get('/readme', (req, res, next) => {
+  let { email, user } = req.query
+  email = email || user
+  const selects = ['prefix', 'client']
+  selectUser({ email, selects }).then(({ user: { client, prefix } }) => {
+    if (!client) {
+      return res.sendStatus(403)
+    }
+    const user = { email, name: email, prefix, ...client }
+    const link = `https://docs.locus.place/v1.0?auth_token=${signJWT(user, README_LOCUS_SECRET)}`
+    return res.status(200).json({ message: 'Login link generated', link })
+  }).catch(next)
+})
+
+// GET /readme/login through email workflow
 router.get('/readme/login', (req, res, next) => {
   let { email, user } = req.query
   email = email || user
