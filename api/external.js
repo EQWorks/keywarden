@@ -4,7 +4,6 @@ const router = express.Router()
 
 const { selectUser } = require('../modules/db')
 const { signJWT } = require('../modules/auth')
-const { sendMail, magicLinkHTML, magicLinkText } = require('../modules/email.js')
 
 const { README_LOCUS_SECRET } = process.env
 
