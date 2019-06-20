@@ -44,14 +44,14 @@ const _prepareConditions = ({ prefix, api_access, product = 'atom' }) => {
 // list users that the given user (email) has access to
 const getUsers = ({ prefix, api_access, product = 'atom' }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
-  const selects = ['email', 'prefix', 'client', product]
+  const selects = ['email', 'prefix', 'client', 'info', product]
   return listUsers({ selects, conditions })
 }
 
 // get a user by email that the given user (email) has access to
 const getUser = ({ email, prefix, api_access, product = 'atom' }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
-  const selects = ['email', 'prefix', 'client', product]
+  const selects = ['email', 'prefix', 'client', 'info', product]
   return selectUser({ email, selects, conditions })
 }
 
