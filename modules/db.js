@@ -35,7 +35,7 @@ const listUsers = async ({ selects, conditions }) => {
   const { rows: users=[] } = await pool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
-    WHERE ${conditions.join(' AND ')};
+    ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''};
   `)
   return { users }
 }
