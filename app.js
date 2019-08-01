@@ -16,7 +16,7 @@ app.options('*', cors())
 app.use(bodyParser.json())
 
 // mount API endpoints by stage
-app.use(`/${process.env.STAGE}`, api)
+app.use(`/${process.env.STAGE || 'dev'}`, api)
 
 // catch-all error handler
 // eslint disable otherwise not able to catch errors

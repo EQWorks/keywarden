@@ -7,8 +7,8 @@ const { fullCheck } = require('../modules/access')
 const { confirmed, hasQueryParams } = require('./middleware')
 
 // GET /
-router.get('/', (req, res) => {
-  let { KEYWARDEN_VER, STAGE } = process.env
+router.get('/', (_, res) => {
+  let { KEYWARDEN_VER = 'N/A', STAGE = 'dev' } = process.env
   return res.json({
     STAGE,
     KEYWARDEN_VER,
@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 // GET /login
 router.get('/login', hasQueryParams('user'), (req, res, next) => {
   const { user, redirect, zone, product='ATOM' } = req.query
-  const { STAGE } = process.env
+  const { STAGE = 'dev' } = process.env
   let origin = `${req.protocol}://${req.get('host')}`
   if (STAGE) {
     origin += `/${STAGE}`
