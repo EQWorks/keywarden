@@ -29,9 +29,7 @@ router.get('/list', confirmed(), (req, res, next) => {
   const { userInfo } = req
   const { product } = req.query
   getUsers({ ...userInfo, product })
-    .then(r => {
-      return res.json(r)
-    })
+    .then(({ users }) => res.json(users))
     .catch(next)
 })
 
