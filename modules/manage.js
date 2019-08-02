@@ -55,28 +55,11 @@ const getUser = ({ email, prefix, api_access, product = 'atom' }) => {
   return selectUser({ email, selects, conditions })
 }
 
-const _prepareUser = ({ userInfo, prefix, product }) => {
-  // extract user info
-  const { email, api_access: _access = {}, prefix: _prefix = prefix } = userInfo
-  // further extraction with safeguards
-  const { wl = [], customers = [], read = 0, write = 0 } = _access
-  // db schema compliant user object (field = column)
-  return {
-    email,
-    prefix: _prefix,
-    [product]: { read, write },
-    client: { wl, customers },
-  }
-}
-
-const _canManage = ({ userInfo, prefix, api_access }) => {
+const _canManage = ({ userInfo, prefix, api_access, product }) => {
   // target userInfo
   const {
-    api_access: {
-      wl: targetWL,
-      customers: targetCustomers,
-      ...targetAccess
-    } = {},
+    client: { wl: targetWL, customers: targetCustomers },
+    [product]: targetAccess,
     prefix: targetPrefix,
   } = userInfo
   // requesting user
@@ -97,15 +80,13 @@ const _canManage = ({ userInfo, prefix, api_access }) => {
 
 // create a user
 const createUser = ({ userInfo, prefix, api_access, product = 'atom' }) => {
-  _canManage({ userInfo, prefix, api_access })
-  const user = _prepareUser({ userInfo, prefix, product })
-  return insertUser(user)
+  _canManage({ userInfo, prefix, api_access, product })
+  return insertUser(userInfo)
 }
 
 const editUser = ({ userInfo, prefix, api_access, product = 'atom' }) => {
-  _canManage({ userInfo, prefix, api_access })
-  const user = _prepareUser({ userInfo, prefix, product })
-  return updateUser(user)
+  _canManage({ userInfo, prefix, api_access, product })
+  return updateUser(userInfo)
 }
 
 // delete a user
