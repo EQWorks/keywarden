@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - "8"
+  - 10
 branches:
   only:
     # intended for /dev stage auto deployment
@@ -16,13 +16,17 @@ script:
   - ./scripts/deploy
 env:
   global:
-    - MONGO_URI='mongodb://EQVIR-P-vMONGODBM01.cpm.com:27017,EQVIR-P-vMONGODBS02.cpm.com:27017,EQVIR-P-MONGODBS03.cpm.com:27017/eqreporting?replicaSet=eqtor-p-mongo1'
-    - MONGO_USER_DB='eqreporting'
-    - MONGO_USER_COLL='equsers'
-    - OTP_TTL=600000
-    # DEV_JWT_SECRET
-    - secure: "GeYu0gN/QHL0Q20lUO2uJhKx7axj/ugEOXWBQbxhLXeXfk/zMmBZ0vi7osItp+UZ35zJM3GFF+YxGHB90Y667jxApafh9D12GdrEGvZzPEZVfYSvH6CxJp0y7h9SAb4ML8vCLaQvvzuiNBjLrxjBEjtqs93q5W4fRDktUPOSouJXaU3ytrbaWqhVbk+sqwM4/J5jrLf1hA6Va0XX2I6j69ii2Ps4H/MvU79e6ZUj5dwqfvEjj1ZgT58JdxDe5BE2757ip0oNSPk5FocXnfameuMcu7ZS9q8bVf87ei70pvZX8ZJLHddbqD1EaVS3gaMrpzSQgaNQqaYuyTxm5+c/WxI75NO+wiPBD49fk48UVF0WoCs67ImLdrhBc1MY3mAestqUIarxRC29M7jeo7RUEJ1FvGpmU908wjWI6tJT4qZUHrP+kGDY3se2uUm07+Pk8qzUfFNBoQ2Wa7e1voZcJ8ghbWbb7LF0k3ONV3Hhxef/q/UvArKjaTpQUqLC3BB0ZELhKyBbv1mE9tu1g5yjiyisnkXhosOomDpDV3ork0bwGZ8PNaDTAPKCqoDMfULXutNwfc1+WHi6ysqOgUzR88Z90TzXvz2uzgaKkn68Too2alu1fiyezIHx2c9kLfD5G1WAd8pCmTSnh/MeqN+WC/Feka8HxdVNdRrsmhDr5Eg="
-    # PROD_JWT_SECRET
-    - secure: "D5Y8sK9uRr47jvEJYdhnmUXb4L9GVG54HVTcDP3skll7kUX2nAQGWGAae9Bh8lMTjReicOW16t7YxuCoO7sRax1eNt+ImLghVt30cEo0q1UNrusTszd9m/FDmr5sdccdj2tj4Xrn8xadSNMyUTZ3z64Wfjs152AW3ykJq7GmdqE9YYyZ8ClCSDWHYv14P3+RgqCXfvpzHSoqFfDJ5NFt6ZE2PDqgJq8U4sqYO0NI9wcDvOZioZv5rJat27/ELkbssQxzEVSsSLEqDzdbgBwuK/l0quSuNc+l+CeZSqN+wt4KgHINejpUo08UssFXWMuRlVW9lHG9/lXvNQIJMn27VBXQZ+QtPa7E3l+8V+2Np65O3DK/vbRgtJEvuxfGzGQ6kiGfph3pv2VPN0J90a4V8dpGKty94n5zUZUZZYrOyGxpoNddpFqgSPIFW/T4FbDvagGy6AAuRiyTd1lPjMFTrgKsveRxh33axX0NmEuyLSYtG/rirCBsbHxV8wD4gGr0vVBfq8WIjg2F4WUM2Fr45nbhEQZfq2xBISGhC8PKFkfg1SLq38HNfUJUKRYmiQp+m4oUpwfX4qGg7tC8aogzfJZhDh87P9szjwMSAU+o+vf8nNfkPnauZfdURmPlP7e6eb7KlaZ4SsAR9xSfW3jLHVOxpeoNT7rD1EqKdxDZcpU="
+    - DEV_PGHOST: eq-dev-cluster.cluster-cx4wctygygyq.us-east-1.rds.amazonaws.com
+    - DEV_PGDATABASE: EQAds
+    - DEV_PGUSER: eqdev
+    # DEV_PGPASSWORD - set in Travis UI
+    - PROD_PGHOST: eq-db-prod.cluster-cx4wctygygyq.us-east-1.rds.amazonaws.com
+    - PROD_PGDATABASE: EQAds
+    - PROD_PGUSER: admin
+    # PROD_PGPASSWORD - set in Travis UI
+    # README_LOCUS_SECRET - set in Travis UI
+    - OTP_TTL: 600000
+    # DEV_JWT_SECRET - set in Travis UI
+    # PROD_JWT_SECRET - set in Travis UI
     # SLACK_WEBHOOK for deployment status message
     - secure: "thHfHIpE4jRoeiD3rE7YOCbK4k+x7Lz56UaNFV7UPzplRdowbZSUnBbb28r9rAzOhwkF36/edMpvHVaZyTzug2ptyzgSj9gdZhnIH78MpeMxnBScfb3c1pBz8Xr68qBpmMfYPfv4kobggA+zC9lX92nalTk+RU5mYk9FXGZdsFsxNMCQhxltf5q2zerHIBVFjYFKotAIROl36AWJEdIMPPfRKKyD2UuQ3UIxDIjHEdSeFAzZ4GNz1Xmcxw2jegRX44ONptWQ7GHmxJ3HqfQU49q6PpozsD8/Txx/31seipujBc3bz+xE9ZSYpdzRSxOowN6tdpyPEHXmQUic4Xh3UPpqOkkp0MQ/7NbL31XrG2kEn51vM/5o+qdjsK4DrXlWHtEEJKLZ2AxBpcISNgZcLnp9uQXlNvfKSbRNy2VfvE+7xkG0bPLzhS7IlO0TLzVF1MmMNeDrjPLeoJsXaywObe/2UZlLbFcgXP7aGQa/Hdft6PQkgou1hZJr36MvWlc2WYx2ozJpXrN7PhLwA0BVi6d0DpTIZnoTpWR+PAlL9nYJmfdOZ2A/xp7yuheORTfItso20NULsPPWoTgHhcXHSFbjv55EJOhGitrs+KJxKwpzxFD3QBPD7UxRoqXH4/lGrj4A1DOlnxRWPigrXo0Vt0x4Cdg00A0vJFq51fcBlq0="
