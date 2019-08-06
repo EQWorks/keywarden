@@ -34,9 +34,13 @@ echo -e "\n============= Deploying branch: ${BRANCH} (${SERVICE_VER}) to stage: 
 
 # scope env-var vars based on branch/stage
 JWT_SECRET="${ENV_PRE}_JWT_SECRET"
+PGHOST="${ENV_PRE}_PGHOST"
+PGDATABASE="${ENV_PRE}_PGDATABASE"
+PGUSER="${ENV_PRE}_PGUSER"
+PGPASSWORD="${ENV_PRE}_PGPASSWORD"
 
 # deploy with branch/stage specific env vars
-DEPLOY_RES=$(JWT_SECRET=${!JWT_SECRET} MONGO_URI=${MONGO_URI} MONGO_USER_DB=${MONGO_USER_DB} MONGO_USER_COLL=${MONGO_USER_COLL} OTP_TTL=${OTP_TTL} KEYWARDEN_VER=${SERVICE_VER} bash -c "sls deploy --stage ${STAGE}")
+DEPLOY_RES=$(JWT_SECRET=${!JWT_SECRET} PGHOST=${!PGHOST} PGDATABASE=${!PGDATABASE} PGUSER=${!PGUSER} PGPASSWORD=${!PGPASSWORD} OTP_TTL=${OTP_TTL} KEYWARDEN_VER=${SERVICE_VER} README_LOCUS_SECRET=${README_LOCUS_SECRET} bash -c "sls deploy --stage ${STAGE}")
 
 # assign deployment exit code
 DEPLOY_EXIT=$?
