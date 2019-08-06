@@ -18,21 +18,23 @@ module.exports = {
     "quotes": [
       "error",
       "single",
+      { "avoidEscape": true },
     ],
     "semi": [
       "error",
       "never",
     ],
-    "comma-dangle": [
-      "error",
-      "never",
-    ],
     "no-console": [
-      "warn"
+      "error",
+      { allow: ["warn", "error"] },
     ],
     "comma-dangle": [
       "error",
-      "only-multiline"
+      "only-multiline",
+    ],
+    "no-unused-vars": [
+      "error",
+      { "ignoreRestSiblings": true },
     ],
   },
 }

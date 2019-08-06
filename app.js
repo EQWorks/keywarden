@@ -1,8 +1,9 @@
 const serverless = require('serverless-http')
 const express = require('express')
 const cors = require('cors')
+const bodyParser = require('body-parser')
 
-const api = require('./api.js')
+const api = require('./api')
 
 // express app
 const app = express()
@@ -11,9 +12,11 @@ app.enable('trust proxy')
 // enable CORS for endpoints and their pre-flight requests (when applicable)
 app.use(cors())
 app.options('*', cors())
+// bodyParser for json
+app.use(bodyParser.json())
 
 // mount API endpoints by stage
-app.use(`/${process.env.STAGE}`, api)
+app.use(`/${process.env.STAGE || 'dev'}`, api)
 
 // catch-all error handler
 // eslint disable otherwise not able to catch errors
@@ -24,6 +27,7 @@ app.use((err, req, res, next) => {
   logLevel = logLevel || 'ERROR'
   statusCode = statusCode || 500
   // app log
+  // eslint-disable-next-line no-console
   console.log(`[${logLevel}] - ${statusCode} - ${message}`)
   if (logLevel === 'ERROR') {
     console.error(`[ERROR] ${message}`, err.stack || err)
@@ -38,6 +42,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   app.listen(3333, () => {
+    // eslint-disable-next-line no-console
     console.log('Listening on port 3333')
   })
 } else {

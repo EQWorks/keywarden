@@ -1,368 +1,312 @@
-module.exports.magicLinkHTML = (magicLink, otp, ttl) => (`
+const nodemailer = require('nodemailer')
+const AWS = require('aws-sdk')
+
+const sendMail = message => nodemailer.createTransport({
+  SES: new AWS.SES(),
+}).sendMail(message)
+
+const magicLinkHTML = ({ link, otp, ttl, company, product }) => `
+  <!DOCTYPE html>
+  <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
   <head>
+    <meta charset="utf-8"> <!-- utf-8 works for most cases -->
+    <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
+    <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
+    <title></title> <!-- The title tag shows in email notifications, like Android 4.4. -->
+
+    <!-- Web Font / @font-face : BEGIN -->
+    <!-- NOTE: If web fonts are not required, lines 10 - 27 can be safely removed. -->
+
+    <!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
+    <!--[if mso]>
+      <style>
+        * {
+          font-family: sans-serif !important;
+        }
+      </style>
+    <![endif]-->
+
+    <!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
+    <!--[if !mso]><!-->
+    <!-- insert web font reference, eg: <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'> -->
+    <!--<![endif]-->
+
+    <!-- Web Font / @font-face : END -->
+
+    <!-- CSS Reset : BEGIN -->
     <style>
-      /* -------------------------------------
-        GLOBAL RESETS
-      ------------------------------------- */
-      img {
-        border: none;
-        -ms-interpolation-mode: bicubic;
-        max-width: 100%;
-      }
+
+      /* What it does: Remove spaces around the email design added by some email clients. */
+      /* Beware: It can remove the padding / margin and add a background color to the compose a reply window. */
+      html,
       body {
-        background-color: #f6f6f6;
-        font-family: sans-serif;
-        -webkit-font-smoothing: antialiased;
-        font-size: 14px;
-        line-height: 1.4;
-        margin: 0;
-        padding: 0;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        height: 100% !important;
+        width: 100% !important;
+      }
+
+      /* What it does: Stops email clients resizing small text. */
+      * {
         -ms-text-size-adjust: 100%;
         -webkit-text-size-adjust: 100%;
       }
+
+      /* What it does: Centers email on Android 4.4 */
+      div[style*="margin: 16px 0"] {
+        margin: 0 !important;
+      }
+
+      /* What it does: Stops Outlook from adding extra spacing to tables. */
+      table,
+      td {
+        mso-table-lspace: 0pt !important;
+        mso-table-rspace: 0pt !important;
+      }
+
+      /* What it does: Fixes webkit padding issue. Fix for Yahoo mail table alignment bug. Applies table-layout to the first 2 tables then removes for anything nested deeper. */
       table {
-        border-collapse: separate;
-        mso-table-lspace: 0pt;
-        mso-table-rspace: 0pt;
-        width: 100%;
+        border-spacing: 0 !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+        margin: 0 auto !important;
       }
-      table td {
-        font-family: sans-serif;
-        font-size: 14px;
-        vertical-align: top;
-      }
-      /* -------------------------------------
-        BODY & CONTAINER
-      ------------------------------------- */
-      .body {
-        background-color: #f6f6f6;
-        width: 100%;
-      }
-      /* Set a max-width, and make it display as block so it will automatically stretch to that width, but will also shrink down on a phone or something */
-      .container {
-        display: block;
-        Margin: 0 auto !important;
-        /* makes it centered */
-        max-width: 580px;
-        padding: 10px;
-        width: 580px;
-      }
-      /* This should also be a block element, so that it will fill 100% of the .container */
-      .content {
-        box-sizing: border-box;
-        display: block;
-        Margin: 0 auto;
-        max-width: 580px;
-        padding: 10px;
-      }
-      /* -------------------------------------
-        HEADER, FOOTER, MAIN
-      ------------------------------------- */
-      .main {
-        background: #fff;
-        border-radius: 3px;
-        width: 100%;
+      table table table {
+        table-layout: auto;
       }
 
-      .wrapper {
-        box-sizing: border-box;
-        padding: 20px;
+      /* What it does: Uses a better rendering method when resizing images in IE. */
+      img {
+        -ms-interpolation-mode:bicubic;
       }
 
-      .footer {
-        clear: both;
-        padding-top: 10px;
-        text-align: center;
-        width: 100%;
+      /* What it does: Prevents Windows 10 Mail from underlining links despite inline CSS. Styles for underlined links should be inline. */
+      a {
+        text-decoration: none;
       }
 
-      .footer td,
-      .footer p,
-      .footer span,
-      .footer a {
-        color: #999999;
-        font-size: 12px;
-        text-align: center;
+      /* What it does: A work-around for email clients meddling in triggered links. */
+      *[x-apple-data-detectors],  /* iOS */
+      .unstyle-auto-detected-links *,
+      .aBn {
+        border-bottom: 0 !important;
+        cursor: default !important;
+        color: inherit !important;
+        text-decoration: none !important;
+        font-size: inherit !important;
+        font-family: inherit !important;
+        font-weight: inherit !important;
+        line-height: inherit !important;
       }
-      /* -------------------------------------
-        TYPOGRAPHY
-      ------------------------------------- */
-      h1,
-      h2,
-      h3,
-      h4 {
-        color: #727272;
-        font-family: sans-serif;
-        font-weight: 400;
-        line-height: 1.4;
-        margin: 0;
-        Margin-bottom: 30px;
+
+      /* What it does: Prevents Gmail from displaying a download button on large, non-linked images. */
+      .a6S {
+        display: none !important;
+        opacity: 0.01 !important;
       }
-      h1 {
-        font-size: 30px;
-        font-weight: 400;
-        text-align: center;
+      /* If the above doesn't work, add a .g-img class to any image in question. */
+      img.g-img + div {
+        display: none !important;
       }
-      h2 {
-        font-size: 20px;
-        font-weight: 300;
-        color: #3a3a3a;
-        text-align: center;
+
+      /* What it does: Removes right gutter in Gmail iOS app: https://github.com/TedGoas/Cerberus/issues/89  */
+      /* Create one of these media queries for each additional viewport size you'd like to fix */
+
+      /* iPhone 4, 4S, 5, 5S, 5C, and 5SE */
+      @media only screen and (min-device-width: 320px) and (max-device-width: 374px) {
+        .email-container {
+          min-width: 320px !important;
+        }
       }
-      h3 {
-        font-size: 15px;
-        font-weight: 300;
-        color: #3a3a3a;
-        line-height: 1.4;
-        text-align: center;
+      /* iPhone 6, 6S, 7, 8, and X */
+      @media only screen and (min-device-width: 375px) and (max-device-width: 413px) {
+        .email-container {
+          min-width: 375px !important;
+        }
       }
-      h4 {
-        font-size: 12px;
-        color: #999999;
-        text-align: center;
-        width: 60%;
-        margin: 0 auto;
+      /* iPhone 6+, 7+, and 8+ */
+      @media only screen and (min-device-width: 414px) {
+        .email-container {
+          min-width: 414px !important;
+        }
       }
-      p,
+
+    </style>
+    <!-- CSS Reset : END -->
+    <!-- Reset list spacing because Outlook ignores much of our inline CSS. -->
+    <!--[if mso]>
+    <style type="text/css">
       ul,
       ol {
-        font-family: sans-serif;
-        font-size: 14px;
-        font-weight: normal;
-        margin: 0;
-        Margin-bottom: 0px;
+        margin: 0 !important;
       }
-      p li,
-      ul li,
-      ol li {
-        list-style-position: inside;
-        margin-left: 5px;
+      li {
+        margin-left: 30px !important;
       }
-      a {
-        color: #3498db;
-        text-decoration: underline;
+      li.list-item-first {
+        margin-top: 0 !important;
       }
-      /* -------------------------------------
-        BUTTONS
-      ------------------------------------- */
-      .btn {
-        box-sizing: border-box;
-        width: 100%;
-        Margin-bottom: 30px;
-      }
-      .btn> tbody> tr> td {
-        padding-bottom: 15px;
-      }
-      .btn table {
-        width: auto;
-        margin: 0 auto;
-      }
-      .btn table td {
-        background-color: #ffffff;
-        border-radius: 5px;
-        text-align: center;
-      }
-      .btn a {
-        background-color: #ffffff;
-        border: solid 1px #6ba4f8;
-        border-radius: 5px;
-        box-sizing: border-box;
-        color: #6ba4f8;
-        cursor: pointer;
-        display: inline-block;
-        font-size: 20px;
-        font-weight: bold;
-        margin: 0;
-        padding: 12px 25px;
-        text-decoration: none;
-        text-transform: capitalize;
-      }
-      .btn-primary table td {
-        background-color: #6ba4f8;
-      }
-      .btn-primary a {
-        background-color: #6ba4f8;
-        border-color: #6ba4f8;
-        color: #ffffff;
-      }
-      /* -------------------------------------
-        OTHER STYLES THAT MIGHT BE USEFUL
-      ------------------------------------- */
-      .last {
-        margin-bottom: 0;
-      }
-      .first {
-        margin-top: 0;
-      }
-      .align-center {
-        text-align: center;
-      }
-      .align-right {
-        text-align: right;
-      }
-      .align-left {
-        text-align: left;
-      }
-      .clear {
-        clear: both;
-      }
-      .mt0 {
-        margin-top: 0;
-      }
-      .mb0 {
-        margin-bottom: 0;
-      }
-      hr {
-        border: 0;
-        border-bottom: 1px solid #f6f6f6;
-        Margin: 20px 0;
-      }
-      /* -------------------------------------
-        RESPONSIVE AND MOBILE FRIENDLY STYLES
-      ------------------------------------- */
-      @media only screen and (max-width: 620px) {
-        table[class=body] h1 {
-          font-size: 28px !important;
-          margin-bottom: 10px !important;
-        }
-        table[class=body] p,
-        table[class=body] ul,
-        table[class=body] ol,
-        table[class=body] td,
-        table[class=body] span,
-        table[class=body] a {
-          font-size: 16px !important;
-        }
-        table[class=body] .wrapper,
-        table[class=body] .article {
-          padding: 10px !important;
-        }
-        table[class=body] .content {
-          padding: 0 !important;
-        }
-        table[class=body] .container {
-          padding: 0 !important;
-          width: 100% !important;
-        }
-        table[class=body] .main {
-          border-left-width: 0 !important;
-          border-radius: 0 !important;
-          border-right-width: 0 !important;
-        }
-        table[class=body] .btn table {
-          width: 100% !important;
-        }
-        table[class=body] .btn a {
-          width: 100% !important;
-        }
-        table[class=body] .img-responsive {
-          height: auto !important;
-          max-width: 100% !important;
-          width: auto !important;
-        }
-      }
-      /* -------------------------------------
-        PRESERVE THESE STYLES IN THE HEAD
-      ------------------------------------- */
-      @media all {
-        .ExternalClass {
-          width: 100%;
-        }
-        .ExternalClass,
-        .ExternalClass p,
-        .ExternalClass span,
-        .ExternalClass font,
-        .ExternalClass td,
-        .ExternalClass div {
-          line-height: 100%;
-        }
-        .apple-link a {
-          color: inherit !important;
-          font-family: inherit !important;
-          font-size: inherit !important;
-          font-weight: inherit !important;
-          line-height: inherit !important;
-          text-decoration: none !important;
-        }
-        .btn-primary table td:hover {
-          background-color: #5582C5 !important;
-        }
-        .btn-primary a:hover {
-          background-color: #5582C5 !important;
-          border-color: #5582C5 !important;
-        }
+      li.list-item-last {
+        margin-bottom: 10px !important;
       }
     </style>
+    <![endif]-->
+
+    <!-- Progressive Enhancements : BEGIN -->
+    <style>
+
+      /* What it does: Hover styles for buttons */
+      .button-td,
+      .button-a {
+        transition: all 100ms ease-in;
+      }
+      .button-td-primary:hover,
+      .button-a-primary:hover {
+        background: #555555 !important;
+        border-color: #555555 !important;
+      }
+
+      /* Media Queries */
+      @media screen and (max-width: 600px) {
+
+        /* What it does: Adjust typography on small screens to improve readability */
+        .email-container p {
+          font-size: 17px !important;
+        }
+
+      }
+
+    </style>
+    <!-- Progressive Enhancements : END -->
+
+    <!-- What it does: Makes background images in 72ppi Outlook render at correct size. -->
+    <!--[if gte mso 9]>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
   </head>
-  <body class="">
-    <table border="0" cellpadding="0" cellspacing="0" class="body">
-      <tr>
-        <td>&nbsp;</td>
-        <td class="container">
-          <div class="content">
-            <!-- START CENTERED WHITE CONTAINER -->
-            <table class="main">
-              <!-- START MAIN CONTENT AREA -->
-              <tr>
-                <td class="wrapper">
-                  <table border="0" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td>
-                        <h1>Welcome</h1>
-                        <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
-                          <tbody>
-                            <tr>
-                              <td align="left">
-                                <table border="0" cellpadding="0" cellspacing="0">
-                                  <tbody>
-                                    <tr>
-                                      <td>
-                                        <a href="${magicLink}" target="_blank">Sign in with Magic Link</a>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                        <h3>
-                          <p>Magic link doesn't work for you?</p>
-                          <p>Use the one-time passcode
-                            <strong>${otp}</strong>
-                          </p>
-                        </h3>
-                        <h4>This will expire after ${ttl}, and all previous email should be discarded.</h4>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-              <!-- END MAIN CONTENT AREA -->
-            </table>
-            <!-- START FOOTER -->
-            <div class="footer">
-              <table border="0" cellpadding="0" cellspacing="0">
+  <!--
+    The email background color (#ffffff) is defined in three places:
+    1. body tag: for most email clients
+    2. center tag: for Gmail and Inbox mobile apps and web versions of Gmail, GSuite, Inbox, Yahoo, AOL, Libero, Comcast, freenet, Mail.ru, Orange.fr
+    3. mso conditional: For Windows 10 Mail
+  -->
+  <body width="100%" style="margin: 0; padding: 0 !important; mso-line-height-rule: exactly; background-color: #ffffff;">
+    <center style="width: 100%; background-color: #ffffff;">
+    <!--[if mso | IE]>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff;">
+    <tr>
+    <td>
+    <![endif]-->
+
+      <!-- Visually Hidden Preheader Text : BEGIN -->
+      <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
+        ${product} (${company}) Login Magic Link
+      </div>
+      <!-- Visually Hidden Preheader Text : END -->
+
+      <!-- Create white space after the desired preview text so email clients don’t pull other distracting text into the inbox preview. Extend as necessary. -->
+      <!-- Preview Text Spacing Hack : BEGIN -->
+      <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
+        &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+      </div>
+      <!-- Preview Text Spacing Hack : END -->
+
+      <!--
+        Set the email width. Defined in two places:
+        1. max-width for all clients except Desktop Windows Outlook, allowing the email to squish on narrow but never go wider than 600px.
+        2. MSO tags for Desktop Windows Outlook enforce a 600px width.
+      -->
+      <div style="max-width: 600px; margin: 0 auto;" class="email-container">
+        <!--[if mso]>
+        <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" width="600">
+        <tr>
+        <td>
+        <![endif]-->
+
+        <!-- Email Body : BEGIN -->
+        <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 auto;">
+          <!-- 1 Column Text + Button : BEGIN -->
+          <tr>
+            <td style="background-color: #ffffff;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td class="content-block">
-                    <br> Have a Login issue?
-                    <a href="mailto:dev@eqworks.com?subject=Login Issue">Contact Us</a>.
+                  <td style="padding: 10px; font-family: sans-serif; font-size: 15px; line-height: 20px; color: #555555; text-align: center;">
+                    <h1 style="margin: 0 0 10px 0; font-family: sans-serif; font-size: 25px; line-height: 30px; color: #333333; font-weight: normal;">Welcome to ${product} (${company})</h1>
                   </td>
                 </tr>
+                <tr>
+                  <td style="padding: 0 20px;">
+                    <!-- Button : BEGIN -->
+                    <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: auto;">
+                      <tr>
+                        <td class="button-td button-td-primary" style="border-radius: 4px; background: #6BA4F8;">
+                          <a class="button-a button-a-primary" href="${link}" style="background: #6BA4F8; border: 1px solid #DDDDDD; font-family: sans-serif; font-size: 18px; line-height: 18px; text-decoration: none; padding: 17px 20px; color: #ffffff; display: block; border-radius: 4px;">Login with the Magic Link on this device</a>
+                        </td>
+                      </tr>
+                    </table>
+                    <!-- Button : END -->
+                  </td>
+                </tr>
+                ${otp && ttl ? `<tr>
+                  <td style="padding: 10px; font-family: sans-serif; font-size: 15px; line-height: 20px; color: #555555; text-align: center;">
+                    <p>Or use the one-time passcode</p>
+                    <p><strong>${otp}</strong></p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; font-family: sans-serif; font-size: 12px; line-height: 15px; color: #888888; text-align: center;">
+                    <p>This will expire after ${ttl}, and all previous email should be discarded.</p>
+                  </td>
+                </tr>` : ''}
               </table>
-            </div>
-            <!-- END FOOTER -->
-          </div>
-        </td>
-        <td>&nbsp;</td>
-      </tr>
-    </table>
-  </body>
-`)
+            </td>
+          </tr>
+          <!-- 1 Column Text + Button : END -->
+        </table>
+        <!-- Email Body : END -->
 
-module.exports.magicLinkText = (magicLink, otp, ttl) => (`
-  Welcome.\n
-  Please login with the magic link ${magicLink}\n
-  Or manually enter: ${otp} \n
-  This will expire after ${ttl}, and all previous email should be discarded.
-`)
+        <!-- Email Footer : BEGIN -->
+        <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 auto;">
+          <tr>
+            <td style="padding: 5px; font-family: sans-serif; font-size: 12px; line-height: 15px; text-align: center; color: #888888;">
+              <hr>
+              <p>Having an issue? <a style="color: #6BA4F8;" href="mailto:dev@eqworks.com?subject=${product} (${company}) Login issue">Contact Us</a></p>
+            </td>
+          </tr>
+        </table>
+        <!-- Email Footer : END -->
+
+        <!--[if mso]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
+      </div>
+    <!--[if mso | IE]>
+    </td>
+    </tr>
+    </table>
+    <![endif]-->
+    </center>
+  </body>
+  </html>
+`
+
+const magicLinkText = ({ link, otp, ttl, company, product }) => `
+  Welcome to ${product} (${company})\n
+  Please login with the magic link ${link}\n
+  ${otp && ttl ? `Or manually enter: ${otp} \n
+  This will expire after ${ttl}, and all previous email should be discarded.` : ''}
+`
+
+module.exports = {
+  magicLinkHTML,
+  magicLinkText,
+  sendMail,
+}
