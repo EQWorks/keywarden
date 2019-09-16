@@ -49,7 +49,7 @@ const getUserInfo = async ({ email, product = 'atom', otp = false }) => {
 
 const _validateOTP = async ({ email, otp, reset_uuid = false }) => {
   const userInfo = await getUserInfo({ email, otp: true })
-  const { otp: _otp = {}, api_access = {} } = userInfo
+  const { prefix, otp: _otp = {}, api_access = {} } = userInfo
   let { jwt_uuid } = userInfo
   // check OTP expiration
   const now = Number(moment().format('x'))
@@ -74,7 +74,7 @@ const _validateOTP = async ({ email, otp, reset_uuid = false }) => {
     updates['jwt_uuid'] = jwt_uuid
   }
   await updateUser({ email, ...updates })
-  return { api_access, jwt_uuid }
+  return { api_access, jwt_uuid, prefix }
 }
 
 const _resetUUID = async ({ email }) => {
@@ -123,12 +123,12 @@ const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { 
 
 // verify user OTP and sign JWT on success
 const verifyOTP = async ({ user: email, otp, reset_uuid = false }) => {
-  const { api_access, jwt_uuid } = await _validateOTP({
+  const { api_access, jwt_uuid, prefix } = await _validateOTP({
     email,
     otp,
     reset_uuid,
   })
-  return signJWT({ email, api_access, jwt_uuid })
+  return signJWT({ email, api_access, jwt_uuid, prefix })
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
