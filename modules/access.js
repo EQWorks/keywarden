@@ -19,8 +19,10 @@ const checkPrefix = ({ targetPrefix, prefix }) => {
     pass = ['wl', 'customers'].includes(targetPrefix)
   } else if (prefix === 'customers') {
     pass = targetPrefix === 'customers'
+  } else if (prefix === 'internal') {
+    pass = ['wl', 'customers', 'internal'].includes(targetPrefix)
   } else {
-    pass = prefix === 'internal'
+    pass = prefix === 'dev'
   }
   if (pass) {
     return
