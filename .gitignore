@@ -1,7 +1,4 @@
-*env.yml
-*env.yaml
-!sample-env.yml
-!local-env.yml
+.env
 
 # package directories
 node_modules
