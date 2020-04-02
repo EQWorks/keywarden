@@ -1,0 +1,54 @@
+name: Serverless deployment - dev stage
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'dev-*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Set Node.js version
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12
+
+      - name: Cache Node Modules
+        uses: actions/cache@v1
+        with:
+          path: node_modules
+          key: ${{ runner.OS }}-build-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.OS }}-build-${{ env.cache-name }}-
+            ${{ runner.OS }}-build-
+            ${{ runner.OS }}-
+
+      - run: npm install -g serverless @eqworks/notify
+      - run: yarn install
+
+      - run: echo "PORTUNUS_TOKEN=$PORTUNUS_TOKEN" > .env && yarn deploy --stage dev
+        env:
+          # aws creds for deployment
+          AWS_ACCESS_KEY_ID: ${{secrets.aws_access_key_id}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.aws_secret_access_key}}
+          # stage specific PORTUNUS_TOKEN
+          PORTUNUS_TOKEN: ${{ secrets.PORTUNUS_TOKEN_JWT }}/8/dev
+          # app env vars that are constant/special
+          KEYWARDEN_VER: ${{github.sha}}
+
+      - name: Notify on deployment success
+        if: success()
+        run: notify deployment $GITHUB_REPOSITORY --commit=$GITHUB_SHA --stage=dev
+        env:
+          SLACK_HOOK: ${{secrets.SLACK_HOOK}}
+
+      - name: Notify on deployment failure
+        if: failure()
+        run: notify deployment $GITHUB_REPOSITORY --commit=$GITHUB_SHA --stage=dev --success=false
+        env:
+          SLACK_HOOK: ${{secrets.SLACK_HOOK}}

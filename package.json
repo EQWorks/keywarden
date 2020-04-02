@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "central auth service",
   "scripts": {
-    "start": "env $(print-env dev-env.yml local-env.yml) nodemon app.js",
+    "start": "env $(print-env) nodemon app.js",
     "lint": "eslint --ext .js .",
-    "deploy": "yarn lint && sls deploy"
+    "deploy": "env $(print-env) sls deploy"
   },
   "repository": {
     "type": "git",
