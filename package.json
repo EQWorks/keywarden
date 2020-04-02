@@ -32,6 +32,6 @@
     "babel-eslint": "^8.2.6",
     "eslint": "^4.19.1",
     "nodemon": "^1.18.4",
-    "serverless-domain-manager": "^2.6.0"
+    "serverless-domain-manager": "^3.3.1"
   }
 }
