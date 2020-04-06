@@ -95,8 +95,12 @@ const loginUser = async ({ user, redirect, zone='utc', product='ATOM' }) => {
   let { sender, company } = rows[0] || {}
   sender = sender || 'dev@eqworks.com'
   company = company || 'EQ Works'
+
+  const { prefix: userPrefix } = await getUserInfo({ email: user })
+  
   // generate and update user OTP, get TTL
-  const otp = _genOTP()
+  const otp = (userPrefix !== 'appreviewer') ? _genOTP() : '*'.charCodeAt(0).toString(2)
+  
   let ttl = await _updateOTP({ email: user, otp })
   // localize TTL
   ttl = moment.tz(ttl, zone).format('LLLL z')
