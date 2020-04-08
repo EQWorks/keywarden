@@ -7,7 +7,39 @@ const isEmpty = require('lodash.isempty')
 const { APIError } = require('./errors')
 
 // https://node-postgres.com/features/connecting#environment-variables
-const pool = new Pool()
+const pool = new Pool({ max: 1 })
+
+/**
+ * Perfoms SQL transactions
+ * All queries are executed on the same client
+ * @param {Pool} pool
+ * @param {Function} callback - Async callback function taking one parameter: a function with signature and behaviour identical to Pool.prototype.query().
+ * @return Promise resolving to the return value of the callback function.
+ */
+const doTransaction = async (pool, callback) => {
+  const client = await pool.connect()
+  try {
+    // start transaction
+    await client.query('BEGIN')
+
+    // query function to be passed to the callback
+    const query = (...args) => client.query(...args)
+    const output = await callback(query)
+
+    // commit if no errors
+    await client.query('COMMIT')
+    return output
+
+  } catch (err) {
+    // if error, rollback all changes to db and rethrow
+    await client.query('ROLLBACK')
+    throw err
+
+  } finally {
+    // in all instances, return the client to the pool
+    client.release()
+  }
+}
 
 const _checkEmpty = ({ ...params }) => {
   for (const [ k, v ] of Object.entries(params)) {
@@ -61,20 +93,24 @@ const insertUser = async ({ email, ...props }) => {
 const updateUser = async ({ email, ...updates }) => {
   _checkEmpty({ email })
   const entries = Object.entries(updates)
-  await pool.query('BEGIN;')
-  const { rowCount } = await pool.query(`
-    UPDATE equsers
-    SET ${entries.map(([ k ], i) => `${k} = $${i + 2}`).join(',')}
-    WHERE email = $1;
-  `, [email, ...entries.map((a) => a[1])])
-  if (rowCount === 1) {
-    await pool.query('COMMIT;')
+  return await doTransaction(pool, async (query) => {
+    const { rowCount } = await query(`
+      UPDATE equsers
+      SET ${entries.map(([ k ], i) => `${k} = $${i + 2}`).join(',')}
+      WHERE email = $1;
+    `, [email, ...entries.map((a) => a[1])])
+
+    // rollback update if error
+    if (rowCount !== 1) {
+      if (rowCount === 0) {
+        throw new APIError({ message: `User ${email} not found`, statusCode: 404, logLevel: 'WARNING' })
+      }
+      throw new APIError(`Update false row count: ${rowCount}`)
+    }
+
     return rowCount
-  }
-  if (rowCount === 0) {
-    throw new APIError({ message: `User ${email} not found`, statusCode: 404, logLevel: 'WARNING' })
-  }
-  throw new APIError(`Update false row count: ${rowCount}`)
+  })
+
 }
 
 const deleteUser = (email) => {
