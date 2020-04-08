@@ -1,12 +1,11 @@
+const { AuthorizationError } = require('./errors')
+
 const checkAccess = ({ targetAccess, access, name }) => {
   const pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
   if (pass) {
     return
   }
-  const error = new Error(`Access: ${name} check failed`)
-  error.statusCode = 403
-  error.logLevel = 'WARNING'
-  throw error
+  throw new AuthorizationError(`Access: ${name} check failed`)
 }
 
 const checkPrefix = ({ targetPrefix, prefix }) => {
@@ -27,10 +26,7 @@ const checkPrefix = ({ targetPrefix, prefix }) => {
   if (pass) {
     return
   }
-  const error = new Error('Prefix check failed')
-  error.statusCode = 403
-  error.logLevel = 'WARNING'
-  throw error
+  throw new AuthorizationError('Prefix check failed')
 }
 
 const checkClient = ({ targetClient, client, name }) => {
@@ -40,10 +36,7 @@ const checkClient = ({ targetClient, client, name }) => {
   if (pass) {
     return
   }
-  const error = new Error(`Client: ${name} check failed`)
-  error.statusCode = 403
-  error.logLevel = 'WARNING'
-  throw error
+  throw new AuthorizationError(`Client: ${name} check failed`)
 }
 
 const fullCheck = ({ target, me }) => {

@@ -11,6 +11,7 @@ const isEqual = require('lodash.isequal')
 
 const { sendMail, magicLinkHTML, magicLinkText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
+const { AuthorizationError } = require('./errors')
 
 const {
   HASH_ROUND = 10,
@@ -54,17 +55,11 @@ const _validateOTP = async ({ email, otp, reset_uuid = false }) => {
   // check OTP expiration
   const now = Number(moment().format('x'))
   if (now >= _otp.ttl || 0) {
-    const error = new Error(`Passcode has expired for ${email}`)
-    error.statusCode = 403
-    error.logLevel = 'WARNING'
-    throw error
+    throw new AuthorizationError(`Passcode has expired for ${email}`)
   }
   // validate OTP
   if (!bcrypt.compareSync(otp, _otp.hash || '')) {
-    const error = new Error(`Invalid passcode for ${email}`)
-    error.statusCode = 403
-    error.logLevel = 'WARNING'
-    throw error
+    throw new AuthorizationError(`Invalid passcode for ${email}`)
   }
   // unset OTP from user
   const updates = { otp: {} }
@@ -144,10 +139,7 @@ const confirmUser = async payload => {
   const { api_access: _access, jwt_uuid: _uuid } = userInfo
   // confirm both JWT UUID and api_access integrity
   if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
-    const error = new Error(`Token payload no longer valid for user ${email}`)
-    error.statusCode = 403
-    error.logLevel = 'WARNING'
-    throw error
+    throw new AuthorizationError(`Token payload no longer valid for user ${email}`)
   }
   if (reset_uuid) {
     const uuid = await _resetUUID({ email })
