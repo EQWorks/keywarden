@@ -4,16 +4,15 @@
 const { Pool } = require('pg')
 const isEmpty = require('lodash.isempty')
 
+const { APIError } = require('./errors')
+
 // https://node-postgres.com/features/connecting#environment-variables
 const pool = new Pool()
 
 const _checkEmpty = ({ ...params }) => {
   for (const [ k, v ] of Object.entries(params)) {
     if (isEmpty(v)) {
-      const error = new Error(`Required param ${k} is empty`)
-      error.statusCode = 400
-      error.logLevel = 'WARNING'
-      throw error
+      throw new APIError({ message: `Required param ${k} is empty`, statusCode: 400, logLevel: 'WARNING' })
     }
   }
 }
@@ -53,10 +52,7 @@ const insertUser = async ({ email, ...props }) => {
   } catch(e) {
     // https://www.postgresql.org/docs/current/static/errcodes-appendix.html
     if (e.code === '23505') {
-      const error = new Error(`user ${email} already exists`)
-      error.statusCode = 400
-      error.logLevel = 'WARNING'
-      throw error
+      throw new APIError({ message: `User ${email} already exists`, statusCode: 400, logLevel: 'WARNING' })
     }
     throw e
   }
@@ -75,17 +71,10 @@ const updateUser = async ({ email, ...updates }) => {
     await pool.query('COMMIT;')
     return rowCount
   }
-  let error
   if (rowCount === 0) {
-    error = new Error(`User ${email} not found`)
-    error.statusCode = 404
-    error.logLevel = 'WARNING'
-  } else {
-    error = new Error(`Update false row count: ${rowCount}`)
-    error.statusCode = 500
-    error.logLevel = 'ERROR'
+    throw new APIError({ message: `User ${email} not found`, statusCode: 404, logLevel: 'WARNING' })
   }
-  throw error
+  throw new APIError(`Update false row count: ${rowCount}`)
 }
 
 const deleteUser = (email) => {

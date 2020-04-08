@@ -2,6 +2,7 @@ const serverless = require('serverless-http')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
+const { sentry, errorHandler } = require('./modules/errors')
 
 const api = require('./api')
 
@@ -18,27 +19,14 @@ app.use(bodyParser.json())
 // mount API endpoints by stage
 app.use(`/${process.env.STAGE || 'dev'}`, api)
 
+// sentry logger
+app.use(sentry().requestHandler)
+
+// log all errors to Sentry
+app.use(sentry().errorHandler)
+
 // catch-all error handler
-// eslint disable otherwise not able to catch errors
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  let { logLevel, statusCode } = err
-  const { message } = err
-  logLevel = logLevel || 'ERROR'
-  statusCode = statusCode || 500
-  // app log
-  // eslint-disable-next-line no-console
-  console.log(`[${logLevel}] - ${statusCode} - ${message}`)
-  if (logLevel === 'ERROR') {
-    console.error(`[ERROR] ${message}`, err.stack || err)
-  }
-  // API response
-  return res.status(statusCode).json({
-    statusCode,
-    logLevel,
-    message,
-  })
-})
+app.use(errorHandler)
 
 if (require.main === module) {
   app.listen(3333, () => {
