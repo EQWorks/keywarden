@@ -8,6 +8,8 @@ const { APIError } = require('./errors')
 
 // https://node-postgres.com/features/connecting#environment-variables
 const pool = new Pool({ max: 1 })
+// read-only connection pool
+const poolRO = new Pool({ connectionString: process.env.PG_URI_RO, max: 1 })
 
 /**
  * Perfoms SQL transactions
@@ -51,7 +53,7 @@ const _checkEmpty = ({ ...params }) => {
 
 const selectUser = async ({ email, selects, conditions=[] }) => {
   _checkEmpty({ email })
-  const { rows=[] } = await pool.query(`
+  const { rows=[] } = await poolRO.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     WHERE email = $1
@@ -63,7 +65,7 @@ const selectUser = async ({ email, selects, conditions=[] }) => {
 }
 
 const listUsers = async ({ selects, conditions }) => {
-  const { rows: users=[] } = await pool.query(`
+  const { rows: users=[] } = await poolRO.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''};
@@ -120,7 +122,7 @@ const deleteUser = (email) => {
   `, [email])
 }
 
-const getUserWL = (email) => pool.query(`
+const getUserWL = (email) => poolRO.query(`
   SELECT
     wl.logo,
     wl.sender,
@@ -138,6 +140,4 @@ module.exports = {
   updateUser,
   deleteUser,
   getUserWL,
-  // intended mostly for select queries
-  query: (...params) => pool.query(...params),
 }
