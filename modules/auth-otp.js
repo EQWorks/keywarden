@@ -2,6 +2,7 @@
  * Redis OTP
  */
 const redis = require('redis')
+const { promisify } = require('util')
 const { APIError } = require('./errors')
 
 
@@ -63,41 +64,16 @@ const _redisClient = (url) => {
 }
 
 // sets key/value/expiry and returns redis response ('OK' if successful)
-// eslint-disable-next-line no-undef
-const _setRedisKey = (client, key, value, options, expiry) => new Promise((resolve, reject) => {
-  const args = [key, value].concat([options, expiry].filter(arg => arg))
-  client.set(...args, (err, res) => {
-    if (err) {
-      reject(new RedisError(`Error setting the Redis key: ${err.message}`))
-      return
-    }
-    resolve(res)
-  })
-})
-
+const _setRedisKey = (client, ...args) => promisify(client.set).bind(client)(...args)
+  .catch(err => { throw new RedisError(`Error setting the Redis key: ${err.message}`) })
+  
 // gets value for key and returns redis response
-// eslint-disable-next-line no-undef
-const _getRedisKey = (client, key) => new Promise((resolve, reject) => {
-  client.get(key, (err, res) => {
-    if (err) {
-      reject(new RedisError(`Error getting the Redis key: ${err.message}`))
-      return
-    }
-    resolve(res)
-  })
-})
-
+const _getRedisKey = (client, ...args) => promisify(client.get).bind(client)(...args)
+  .catch(err => { throw new RedisError(`Error getting the Redis key: ${err.message}`) })
+  
 // deletes key and returns redis response (1 if deleted, 0 otherwise)
-// eslint-disable-next-line no-undef
-const _deleteRedisKey = (client, key) => new Promise((resolve, reject) => {
-  client.del(key, (err, res) => {
-    if (err) {
-      reject(new RedisError(`Error deleting the Redis key: ${err.message}`))
-      return
-    }
-    resolve(res)
-  })
-})
+const _deleteRedisKey = (client, ...args) =>  promisify(client.del).bind(client)(...args)
+  .catch(err => { throw new RedisError(`Error deleting the Redis key: ${err.message}`) })
 
 // OTP EXPORTS
 const getRedisClient = _redisClient(process.env.REDIS_URL)
