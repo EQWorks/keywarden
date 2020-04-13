@@ -37,6 +37,21 @@ provider:
     OTP_TTL: ${env:OTP_TTL}
     KEYWARDEN_VER: ${env:KEYWARDEN_VER}
     STAGE: ${opt:stage, self:provider.stage}
+    REDIS_URL:
+      # cloudformation functions to form redis://<host>:<port>
+      "Fn::Join": [
+        "",
+        [
+          "redis://",
+          "Fn::Join": [
+            ":",
+            [
+              "Fn::GetAtt": [KeywardenRedisCluster, RedisEndpoint.Address],
+              "Fn::GetAtt": [KeywardenRedisCluster, RedisEndpoint.Port]
+            ]
+          ]
+        ]
+      ]
   vpc: # vpc-70658509 | EQ-DC-Tunnel
     securityGroupIds:
       - sg-081b437d # api-gateway-dc
@@ -66,3 +81,19 @@ functions:
           cors:
             origin: '*'
             headers: ${self:custom.allowedHeaders}
+
+resources:
+  Resources:
+    # redis resource configured through cloudformation, without explicit manual work
+    KeywardenRedisCluster:
+      Type: AWS::ElastiCache::CacheCluster
+      Properties:
+        ClusterName: ${self:service}-${opt:stage, self:provider.stage}
+        AutoMinorVersionUpgrade: true
+        CacheNodeType: cache.t2.micro
+        Engine: redis
+        NumCacheNodes: 1
+        # this equates to the provider.vpc.subnetIds
+        CacheSubnetGroupName: redis-public-lambda
+        VpcSecurityGroupIds:
+          - sg-52345126
