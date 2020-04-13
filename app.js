@@ -10,6 +10,10 @@ const api = require('./api')
 const app = express()
 // trust proxy to get API Gateway/Cloud Front forwarded headers
 app.enable('trust proxy')
+
+// allow Sentry to access the reques
+app.use(sentry().requestHandler)
+
 // enable CORS for endpoints and their pre-flight requests (when applicable)
 app.use(cors())
 app.options('*', cors())
@@ -18,9 +22,6 @@ app.use(bodyParser.json())
 
 // mount API endpoints by stage
 app.use(`/${process.env.STAGE || 'dev'}`, api)
-
-// sentry logger
-app.use(sentry().requestHandler)
 
 // log all errors to Sentry
 app.use(sentry().errorHandler)

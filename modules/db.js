@@ -7,7 +7,8 @@ const isEmpty = require('lodash.isempty')
 const { APIError } = require('./errors')
 
 // https://node-postgres.com/features/connecting#environment-variables
-const pool = new Pool({ max: 1 })
+const pool = new Pool({ max: 1, host: process.env.PGHOST_READ })
+const wPool = new Pool({ max: 1 })
 
 /**
  * Perfoms SQL transactions
@@ -75,7 +76,7 @@ const insertUser = async ({ email, ...props }) => {
   _checkEmpty({ email })
   const entries = Object.entries({ email, ...props})
   try {
-    await pool.query(`
+    await wPool.query(`
       INSERT INTO equsers
         (${entries.map(([ k ]) => k).join(',')})
       VALUES
@@ -90,10 +91,11 @@ const insertUser = async ({ email, ...props }) => {
   }
 }
 
+// resolves to 1 if update successful
 const updateUser = async ({ email, ...updates }) => {
   _checkEmpty({ email })
   const entries = Object.entries(updates)
-  return await doTransaction(pool, async (query) => {
+  return await doTransaction(wPool, async (query) => {
     const { rowCount } = await query(`
       UPDATE equsers
       SET ${entries.map(([ k ], i) => `${k} = $${i + 2}`).join(',')}
@@ -114,7 +116,7 @@ const updateUser = async ({ email, ...updates }) => {
 }
 
 const deleteUser = (email) => {
-  return pool.query(`
+  return wPool.query(`
     DELETE FROM equsers
     WHERE email = $1;
   `, [email])
@@ -140,4 +142,5 @@ module.exports = {
   getUserWL,
   // intended mostly for select queries
   query: (...params) => pool.query(...params),
+  wQuery: (...params) => wPool.query(...params),
 }
