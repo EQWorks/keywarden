@@ -11,7 +11,7 @@ const app = express()
 // trust proxy to get API Gateway/Cloud Front forwarded headers
 app.enable('trust proxy')
 
-// allow Sentry to access the reques
+// allow Sentry to access the request
 app.use(sentry().requestHandler)
 
 // enable CORS for endpoints and their pre-flight requests (when applicable)
