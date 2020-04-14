@@ -5,6 +5,7 @@ const bodyParser = require('body-parser')
 const { sentry, errorHandler } = require('./modules/errors')
 
 const api = require('./api')
+const { endPool } = require('./modules/db')
 
 // express app
 const app = express()
@@ -19,6 +20,9 @@ app.use(cors())
 app.options('*', cors())
 // bodyParser for json
 app.use(bodyParser.json())
+
+// end DB pools
+app.use(endPool)
 
 // mount API endpoints by stage
 app.use(`/${process.env.STAGE || 'dev'}`, api)
