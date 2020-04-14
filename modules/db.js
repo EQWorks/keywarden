@@ -1,40 +1,83 @@
 /**
  * User database management (CRUD)
  */
-const { Client } = require('pg')
+const { Pool } = require('pg')
 const isEmpty = require('lodash.isempty')
 
-const { APIError } = require('./errors')
+const { APIError, CustomError, sentry } = require('./errors')
 
 // https://node-postgres.com/features/connecting#environment-variables
-const common = {
-  statement_timeout: 10000, // 10s
-  query_timeout: 10000, // 10s
-}
-const client = new Client({ host: process.env.PGHOST_READ, ...common })
-const wClient = new Client(common)
+const pool = new Pool({ max: 1, host: process.env.PGHOST_READ })
+const wPool = new Pool({ max: 1 })
 
-const _query = (client) => async (...args) => {
-  try {
-    await client.connect()
-    const result = await client.query(...args)
-    return result
-  } finally {
+
+const flushClients = async (pool) => {
+  let flushed = 0
+  
+  // check if pool has active clients
+  while (pool.totalCount) {
+    const client = await pool.connect()
     await client.end()
+    await client.release()
+    flushed++
+  }
+
+  return flushed
+}
+
+const flushPools = async (pools = [], logError = false, logFlushed = false) => {
+  try {
+    // eslint-disable-next-line no-undef
+    const results = await Promise.all(pools.map(pool => flushClients(pool)))
+
+    if (logFlushed && results.some(result => result)) {
+      sentry().logError(new CustomError({message: 'DB pool was not empty.', name: 'NonEmptyPoolFlushError'}))
+    }
+
+    return true
+  } catch (err) {
+    if (logError) {
+      sentry().logError(new CustomError({message: `Error while flushing pools: ${err.message}`, name: 'PoolFlushError'}))
+      return
+    }
+    throw err
   }
 }
-const read = _query(client)
-const write = _query(wClient)
+
+// middleware
+const flushDBConnections = (onEntry = true, onFinish = false) => {
+  return async (req, res, next) => {
+    try {
+      if (onFinish) {
+        // register listeners
+        // log all errors to Sentry
+        const listener = () => flushPools([pool, wPool], true)
+        res.on('finish', listener) // this is legacy
+        res.on('close', listener)
+      }
+
+      if (onEntry) {
+        // log ro sentry if pool not empty when it should have been flushed on finish
+        await flushPools([pool, wPool], false, onFinish)
+      }
+
+      next()
+    } catch (err) {
+      next(err)
+    }
+  }
+
+}
 
 /**
  * Perfoms SQL transactions
  * All queries are executed on the same client
- * @param {Client} client - pg.Client
- * @param {Function} callback - Async callback function taking one parameter: a function with signature and behaviour identical to pg.Client.prototype.query().
+ * @param {Pool} pool
+ * @param {Function} callback - Async callback function taking one parameter: a function with signature and behaviour identical to Pool.prototype.query().
  * @return Promise resolving to the return value of the callback function.
  */
-const doTransaction = async (client, callback) => {
-  await client.connect()
+const doTransaction = async (pool, callback) => {
+  const client = await pool.connect()
   try {
     // start transaction
     await client.query('BEGIN')
@@ -53,8 +96,8 @@ const doTransaction = async (client, callback) => {
     throw err
 
   } finally {
-    // in all instances, end the connection
-    client.end()
+    // in all instances, return the client to the pool
+    client.release()
   }
 }
 
@@ -68,7 +111,7 @@ const _checkEmpty = ({ ...params }) => {
 
 const selectUser = async ({ email, selects, conditions=[] }) => {
   _checkEmpty({ email })
-  const { rows = [] } = await read(`
+  const { rows=[] } = await pool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     WHERE email = $1
@@ -80,7 +123,7 @@ const selectUser = async ({ email, selects, conditions=[] }) => {
 }
 
 const listUsers = async ({ selects, conditions }) => {
-  const { rows: users = [] } = await read(`
+  const { rows: users=[] } = await pool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''};
@@ -92,7 +135,7 @@ const insertUser = async ({ email, ...props }) => {
   _checkEmpty({ email })
   const entries = Object.entries({ email, ...props})
   try {
-    await write(`
+    await wPool.query(`
       INSERT INTO equsers
         (${entries.map(([ k ]) => k).join(',')})
       VALUES
@@ -111,7 +154,7 @@ const insertUser = async ({ email, ...props }) => {
 const updateUser = async ({ email, ...updates }) => {
   _checkEmpty({ email })
   const entries = Object.entries(updates)
-  return await doTransaction(wClient, async (query) => {
+  return await doTransaction(wPool, async (query) => {
     const { rowCount } = await query(`
       UPDATE equsers
       SET ${entries.map(([ k ], i) => `${k} = $${i + 2}`).join(',')}
@@ -131,12 +174,12 @@ const updateUser = async ({ email, ...updates }) => {
 
 }
 
-const deleteUser = (email) => write(`
+const deleteUser = (email) => wPool.query(`
   DELETE FROM equsers
   WHERE email = $1;
 `, [email])
 
-const getUserWL = (email) => read(`
+const getUserWL = (email) => pool.query(`
   SELECT
     wl.logo,
     wl.sender,
@@ -154,7 +197,9 @@ module.exports = {
   updateUser,
   deleteUser,
   getUserWL,
-  // for raw expansion
-  read,
-  write,
+  // intended mostly for select queries
+  query: (...params) => pool.query(...params),
+  wQuery: (...params) => wPool.query(...params),
+  // middlewares
+  flushDBConnections,
 }
