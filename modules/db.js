@@ -14,8 +14,8 @@ const wPool = new Pool({ max: 1 })
 const flushClients = async (pool) => {
   let flushed = 0
   
-  // check if pool has active clients
-  while (pool.totalCount) {
+  // check if pool has idle clients
+  while (pool.idleCount) {
     const client = await pool.connect()
     await client.end()
     await client.release()
