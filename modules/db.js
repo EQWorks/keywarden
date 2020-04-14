@@ -15,10 +15,13 @@ const client = new Client({ host: process.env.PGHOST_READ, ...common })
 const wClient = new Client(common)
 
 const _query = (client) => async (...args) => {
-  await client.connect()
-  const result = await client.query(...args)
-  await client.end()
-  return result
+  try {
+    await client.connect()
+    const result = await client.query(...args)
+    return result
+  } finally {
+    await client.end()
+  }
 }
 const read = _query(client)
 const write = _query(wClient)
