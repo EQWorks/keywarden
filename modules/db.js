@@ -3,40 +3,11 @@
  */
 const isEmpty = require('lodash.isempty')
 
-const db = require('./db-pools')
+const DBPool = require('./db-pool')
 const { APIError } = require('./errors')
 
-/**
- * Perfoms SQL transactions
- * All queries are executed on the same client
- * @param {Pool} pool
- * @param {Function} callback - Async callback function taking one parameter: a function with signature and behaviour identical to Pool.prototype.query().
- * @return Promise resolving to the return value of the callback function.
- */
-const doTransaction = async (pool, callback) => {
-  const client = await pool.connect()
-  try {
-    // start transaction
-    await client.query('BEGIN')
-
-    // query function to be passed to the callback
-    const query = (...args) => client.query(...args)
-    const output = await callback(query)
-
-    // commit if no errors
-    await client.query('COMMIT')
-    return output
-
-  } catch (err) {
-    // if error, rollback all changes to db and rethrow
-    await client.query('ROLLBACK')
-    throw err
-
-  } finally {
-    // in all instances, return the client to the pool
-    client.release()
-  }
-}
+const rPool = new DBPool({ max: 1, host: process.env.PGHOST_READ })
+const wPool = new DBPool({ max: 1})
 
 const _checkEmpty = ({ ...params }) => {
   for (const [ k, v ] of Object.entries(params)) {
@@ -48,7 +19,7 @@ const _checkEmpty = ({ ...params }) => {
 
 const selectUser = async ({ email, selects, conditions=[] }) => {
   _checkEmpty({ email })
-  const { rows=[] } = await db.r.query(`
+  const { rows=[] } = await rPool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     WHERE email = $1
@@ -60,7 +31,7 @@ const selectUser = async ({ email, selects, conditions=[] }) => {
 }
 
 const listUsers = async ({ selects, conditions }) => {
-  const { rows: users=[] } = await db.r.query(`
+  const { rows: users=[] } = await rPool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''};
@@ -72,7 +43,7 @@ const insertUser = async ({ email, ...props }) => {
   _checkEmpty({ email })
   const entries = Object.entries({ email, ...props})
   try {
-    await db.w.query(`
+    await wPool.query(`
       INSERT INTO equsers
         (${entries.map(([ k ]) => k).join(',')})
       VALUES
@@ -91,7 +62,7 @@ const insertUser = async ({ email, ...props }) => {
 const updateUser = async ({ email, ...updates }) => {
   _checkEmpty({ email })
   const entries = Object.entries(updates)
-  return await doTransaction(db.w, async (query) => {
+  return await wPool.transaction(async (query) => {
     const { rowCount } = await query(`
       UPDATE equsers
       SET ${entries.map(([ k ], i) => `${k} = $${i + 2}`).join(',')}
@@ -111,12 +82,12 @@ const updateUser = async ({ email, ...updates }) => {
 
 }
 
-const deleteUser = (email) => db.w.query(`
+const deleteUser = (email) => wPool.query(`
   DELETE FROM equsers
   WHERE email = $1;
 `, [email])
 
-const getUserWL = (email) => db.r.query(`
+const getUserWL = (email) => rPool.query(`
   SELECT
     wl.logo,
     wl.sender,
@@ -134,6 +105,6 @@ module.exports = {
   updateUser,
   deleteUser,
   getUserWL,
-  query: (...params) => db.r.query(...params),
-  wQuery: (...params) => db.w.query(...params),
+  rQuery: (...params) => rPool.query(...params),
+  wQuery: (...params) => wPool.query(...params),
 }
