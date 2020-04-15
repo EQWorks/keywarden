@@ -22,7 +22,8 @@ const sentry = (() => {
   
     // middleware to push error to Sentry
     const errorHandler = _sentry.Handlers.errorHandler({
-      shouldHandleError: () => true,
+      // only log to Sentry unknown errors or errors we have categorized as 'ERROR'
+      shouldHandleError: (err) => err.logLevel === undefined || err.logLevel === 'ERROR',
     })
   
     // log errors outside error handler
@@ -153,14 +154,13 @@ class CustomError extends APIError {
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
   const isUnknownError = !(err instanceof APIError)
+  // wrap unknown errors so they all have the same interface
   const _err = isUnknownError ? CustomError.fromError(err) : err
 
-  // app log
-  // eslint-disable-next-line no-console
-  console.log(_err)
-
-  if (_err.logLevel === 'ERROR') {
-    console.error(err.stack || err)
+  // log errors which not logged to Sentry
+  if (_err.logLevel !== 'ERROR') {
+    // log original error
+    console.warn(err.stack || err)
   }
 
   // API response

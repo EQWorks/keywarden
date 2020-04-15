@@ -94,9 +94,9 @@ class DB {
       if (onEntry) {
         this.endAndReset()
           .then((didReset) => {
-            // log to sentry if pools had to be reset on entry
+            // log warning if pools had to be reset on entry
             if (didReset) {
-              sentry().logError(new CustomError({message: 'DB pool persisted between requests and was reset on application entry.', name: 'PersistentDBPoolError', logLevel: 'WARNING'}))
+              console.warn(new CustomError({message: 'DB pool persisted between requests and was reset on application entry.', name: 'PersistentDBPoolError', logLevel: 'WARNING'}))
             }
             next()
           })
