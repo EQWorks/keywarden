@@ -5,7 +5,7 @@ const bodyParser = require('body-parser')
 const { sentry, errorHandler } = require('./modules/errors')
 
 const api = require('./api')
-const { flushDBConnections } = require('./modules/db')
+const db = require('./modules/db-pools')
 
 // express app
 const app = express()
@@ -21,8 +21,9 @@ app.options('*', cors())
 // bodyParser for json
 app.use(bodyParser.json())
 
-// DB - flush clients from pools
-app.use(flushDBConnections(true, true))
+// DB - flush all pools on server response
+// and reset pools persisting between incoming requests
+app.use(db.flush(true, true))
 
 // mount API endpoints by stage
 app.use(`/${process.env.STAGE || 'dev'}`, api)
