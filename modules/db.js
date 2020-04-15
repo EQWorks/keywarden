@@ -1,73 +1,10 @@
 /**
  * User database management (CRUD)
  */
-const { Pool } = require('pg')
 const isEmpty = require('lodash.isempty')
 
-const { APIError, CustomError, sentry } = require('./errors')
-
-// https://node-postgres.com/features/connecting#environment-variables
-const pool = new Pool({ max: 1, host: process.env.PGHOST_READ })
-const wPool = new Pool({ max: 1 })
-
-
-const flushClients = async (pool) => {
-  let flushed = 0
-  
-  // check if pool has idle clients
-  while (pool.idleCount) {
-    const client = await pool.connect()
-    await client.end()
-    await client.release()
-    flushed++
-  }
-
-  return flushed
-}
-
-const flushPools = async (pools = [], logError = false, logFlushed = false) => {
-  try {
-    // eslint-disable-next-line no-undef
-    const results = await Promise.all(pools.map(pool => flushClients(pool)))
-
-    if (logFlushed && results.some(result => result)) {
-      sentry().logError(new CustomError({message: 'DB pool was not empty.', name: 'NonEmptyPoolFlushError'}))
-    }
-
-    return true
-  } catch (err) {
-    if (logError) {
-      sentry().logError(new CustomError({message: `Error while flushing pools: ${err.message}`, name: 'PoolFlushError'}))
-      return
-    }
-    throw err
-  }
-}
-
-// middleware
-const flushDBConnections = (onEntry = true, onFinish = false) => {
-  return async (req, res, next) => {
-    try {
-      if (onFinish) {
-        // register listeners
-        // log all errors to Sentry
-        const listener = () => flushPools([pool, wPool], true)
-        res.on('finish', listener) // this is legacy
-        res.on('close', listener)
-      }
-
-      if (onEntry) {
-        // log ro sentry if pool not empty when it should have been flushed on finish
-        await flushPools([pool, wPool], false, onFinish)
-      }
-
-      next()
-    } catch (err) {
-      next(err)
-    }
-  }
-
-}
+const db = require('./db-pools')
+const { APIError } = require('./errors')
 
 /**
  * Perfoms SQL transactions
@@ -111,7 +48,7 @@ const _checkEmpty = ({ ...params }) => {
 
 const selectUser = async ({ email, selects, conditions=[] }) => {
   _checkEmpty({ email })
-  const { rows=[] } = await pool.query(`
+  const { rows=[] } = await db.r.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     WHERE email = $1
@@ -123,7 +60,7 @@ const selectUser = async ({ email, selects, conditions=[] }) => {
 }
 
 const listUsers = async ({ selects, conditions }) => {
-  const { rows: users=[] } = await pool.query(`
+  const { rows: users=[] } = await db.r.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''};
@@ -135,7 +72,7 @@ const insertUser = async ({ email, ...props }) => {
   _checkEmpty({ email })
   const entries = Object.entries({ email, ...props})
   try {
-    await wPool.query(`
+    await db.w.query(`
       INSERT INTO equsers
         (${entries.map(([ k ]) => k).join(',')})
       VALUES
@@ -154,7 +91,7 @@ const insertUser = async ({ email, ...props }) => {
 const updateUser = async ({ email, ...updates }) => {
   _checkEmpty({ email })
   const entries = Object.entries(updates)
-  return await doTransaction(wPool, async (query) => {
+  return await doTransaction(db.w, async (query) => {
     const { rowCount } = await query(`
       UPDATE equsers
       SET ${entries.map(([ k ], i) => `${k} = $${i + 2}`).join(',')}
@@ -174,12 +111,12 @@ const updateUser = async ({ email, ...updates }) => {
 
 }
 
-const deleteUser = (email) => wPool.query(`
+const deleteUser = (email) => db.w.query(`
   DELETE FROM equsers
   WHERE email = $1;
 `, [email])
 
-const getUserWL = (email) => pool.query(`
+const getUserWL = (email) => db.r.query(`
   SELECT
     wl.logo,
     wl.sender,
@@ -197,9 +134,6 @@ module.exports = {
   updateUser,
   deleteUser,
   getUserWL,
-  // intended mostly for select queries
-  query: (...params) => pool.query(...params),
-  wQuery: (...params) => wPool.query(...params),
-  // middlewares
-  flushDBConnections,
+  query: (...params) => db.r.query(...params),
+  wQuery: (...params) => db.w.query(...params),
 }
