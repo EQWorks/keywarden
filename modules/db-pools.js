@@ -22,52 +22,57 @@ class DB {
     return this
   }
 
+  _end() {
+    // create direct references to the pools
+    const pools = [this._read, this._write]
+
+    // then run async in promise
+    // eslint-disable-next-line no-undef
+    return Promise.all(pools.map(async pool => {
+      if (pool.ending) {
+        return false
+      }
+      await pool.end()
+      return true
+    }))
+      .then(results => results.some((didEnd => didEnd)))
+      .catch(err => {
+        throw new CustomError({message: `Error while ending pools: ${err.message}`, name: 'EndDBPoolError'})
+      })
+  }
+
   /**
    * Call .end() on pools
    * @return {Promise<boolean>} - Resolves to true if at least one pool was ended, false otherwise
    */
   async end() {
-    try {
-      // return false if all pools already ended
-      if (this.isEnded) {
-        return false
-      }
-      const pools = [this._read, this._write]
-      // eslint-disable-next-line no-undef
-      const results = await Promise.all(pools.map(async pool => {
-        if (pool.ending) {
-          return false
-        }
-        await pool.end()
-        return true
-      }))
-      this.isEnded = true
-      return results.some((didEnd => didEnd))
-    } catch (err) {
-      throw new CustomError({message: `Error while ending pools: ${err.message}`, name: 'EndDBPoolError'})
+    // return false if all pools already ended
+    if (this.isEnded) {
+      return false
     }
+    const ended = await this._end()
+    this.isEnded = true
+    return ended
   }
 
   /**
    * End and reset 'used' pools (i.e. pools with clients or 'ended' pools)
    * Call .end() on pools (if not ended) and instantiate new pools
-   * @return {Promise<boolean>} - Resolves to true if reset was performed, false otherwise
+   * @return {boolean} - True if reset was performed, false otherwise
    */
-  async endAndReset() {
-    try {
-      if (this.isEnded || this.totalCount) {
-        if (!this.isEnded) {
-          // end pools if needed
-          await this.end()
-        }
-        // instantiate r/w pools
-        this.reset()
-        return true
+  endAndReset() {
+    if (this.isEnded || this.totalCount) {
+      if (!this.isEnded) {
+        // end pools if needed
+        // no need to await, _end() will get direct references to the pools before running async in a promise
+        // -> can reset pools as soon as pending promise returned
+        this._end().catch(err => sentry.logError(new CustomError({ message: `Error resetting pools asynchronously in endAndReset: ${err.message}`, name: 'ResetDBPoolError' })))
       }
-      return false
-    } catch (err) {
-      throw new CustomError({ message: `Error resetting pools: ${err.message}`, name: 'ResetDBPoolError' })
+      // instantiate r/w pools
+      this.reset()
+      return true
     }
+    return false
   }
 
   /**
@@ -91,17 +96,9 @@ class DB {
       }
 
       // end pools (connections) if necessary + instantiate fresh pools
-      if (onEntry) {
-        this.endAndReset()
-          .then((didReset) => {
-            // log to sentry if pools had to be reset on entry
-            if (didReset) {
-              sentry().logError(new CustomError({message: 'DB pool persisted between requests and was reset on application entry.', name: 'PersistentDBPoolError', logLevel: 'WARNING'}))
-            }
-            next()
-          })
-          .catch(next)
-        return
+      // log warning if pools had to be reset on entry
+      if (onEntry && this.endAndReset()) {
+        console.warn(new CustomError({message: 'DB pool persisted between requests and was reset on application entry.', name: 'PersistentDBPoolError', logLevel: 'WARNING'}))
       }
       
       next()
