@@ -8,6 +8,29 @@
 const { Pool } = require('pg')
 const { CustomError, sentry } = require('./errors')
 
+/**
+ * Checks if connection stream is both readable and writable
+ * @param {pg.Client} client
+ * @returns {boolean}
+ */
+const clientIsHealthy = (client) => {
+  if (!client.connection || !client.connection.stream) {
+    return false
+  }
+  // Streams: https://nodejs.org/api/stream.html
+  const streamHealthChecks = {
+    readable: true,
+    readableEnded: false,
+    writable: true,
+    writableEnded: false,
+    writableFinished: false,
+    destroyed: false,
+  }
+  // ok if undefined as some stream properties were only added in node 12.9.0
+  return Object.entries(streamHealthChecks).every(
+    ([key, value]) => key in client.connection.stream ? client.connection.stream[key] === value : true
+  )
+}
 
 module.exports = class DBPool {
   /**
@@ -34,9 +57,9 @@ module.exports = class DBPool {
    */
   async _acquireClient() {
     const client = await this._pool.connect()
-  
-    // client.connection.stream implements stream.duplex (default net.socket)
-    if (client.connection.stream.readable && client.connection.stream.writable) {
+    
+    // perform health check
+    if (clientIsHealthy(client)) {
       return client
     }
   
@@ -59,14 +82,23 @@ module.exports = class DBPool {
    * Wrapper around node-pg's Pool.prototype.query()
    * @param {string} text
    * @param {Array<any>} [values]
+   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<Any>} Promise resolving to the return value of the callback function.
    */
-  async query(text, values) {
+  async query(text, values, attempt = 0) {
     const client = await this._acquireClient()
     try {
       // run query
       return await client.query(text, values)
-  
+
+    } catch (err) {
+      // if client is not healthy, try again with new client
+      // TODO: if needed add a maxAtempts option
+      if (attempt === 0 && !clientIsHealthy(client)) {
+        return this.query(text, values, attempt + 1)
+      }
+      throw err
+
     } finally {
       // always return the client to the pool
       client.release()
@@ -74,14 +106,15 @@ module.exports = class DBPool {
   }
   
   /**
-   * Perfoms SQL transactions
+   * Perfoms a SQL transaction
    * All queries are executed on the same client
    * @param {(query: (text: string, values?: Array<any>) => Promise<any>) => Promise<any>} cb
    * Async callback function taking one parameter: a function with signature and behaviour
    * identical to node-pg's Pool.prototype.query().
+   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<Any>} Promise resolving to the return value of the callback function.
    */
-  async transaction(cb) {
+  async transaction(cb, attempt = 0) {
     const client = await this._acquireClient()
     try {
       // start transaction
@@ -98,6 +131,12 @@ module.exports = class DBPool {
     } catch (err) {
       // if error, rollback all changes to db and rethrow
       await client.query('ROLLBACK')
+
+      // if client is not healthy, try again with new client
+      if (attempt === 0 && !clientIsHealthy(client)) {
+        return this.transaction(cb, attempt + 1)
+      }
+
       throw err
   
     } finally {
@@ -108,12 +147,13 @@ module.exports = class DBPool {
 
   /**
    * Returns the number of postgres sessions for the current application
+   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<number>}
    */
-  async getSessionsCount() {
+  async getSessionsCount(attempt = 0) {
     const client = await this._acquireClient()
+    const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
     try {
-      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
       if (!applicationName) {
         throw new CustomError({
           message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only get clients at the application level.',
@@ -128,6 +168,14 @@ module.exports = class DBPool {
       `,
       [applicationName])
       return total
+
+    } catch (err) {
+      // if client is not healthy, try again with new client
+      if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
+        return this.getSessionsCount(attempt + 1)
+      }
+      throw err
+
     } finally {
       // always return the client to the pool
       client.release()
@@ -136,13 +184,14 @@ module.exports = class DBPool {
 
   /**
    * Returns the number of idle postgres sessions for the current application
-   * @param {number} [since=5000] Minimum idle duration (in milliseconds) 
+   * @param {number} [since=5000] Minimum idle duration (in milliseconds)
+   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<number>}
    */
-  async getIdleSessionsCount(since = 5000) {
+  async getIdleSessionsCount(since = 5000, attempt = 0) {
     const client = await this._acquireClient()
+    const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
     try {
-      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
       if (!applicationName) {
         throw new CustomError({
           message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only get idle clients at the application level.',
@@ -160,6 +209,14 @@ module.exports = class DBPool {
       `,
       [applicationName, since])
       return idle
+
+    } catch (err) {
+      // if client is not healthy, try again with new client
+      if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
+        return this.getIdleSessionsCount(since, attempt + 1)
+      }
+      throw err
+
     } finally {
       // always return the client to the pool
       client.release()
@@ -167,14 +224,15 @@ module.exports = class DBPool {
   }
 
   /**
-   * Terminate idle postgres sessions for the current application
-   * @param {number} [since=5000] Minimum idle duration (in milliseconds) 
+   * Terminates idle postgres sessions for the current application
+   * @param {number} [since=5000] Minimum idle duration (in milliseconds)
+   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<number>} Promise resolving to the number of sessions terminated
    */
-  async killIdleSessions(since = 5000) {
+  async killIdleSessions(since = 5000, attempt = 0) {
     const client = await this._acquireClient()
+    const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
     try {
-      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
       if (!applicationName) {
         throw new CustomError({
           message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only kill idle clients at the application level.',
@@ -194,6 +252,14 @@ module.exports = class DBPool {
       `,
       [applicationName, since])
       return cancelled
+
+    } catch (err) {
+      // if client is not healthy, try again with new client
+      if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
+        return this.killIdleSessions(since, attempt + 1)
+      }
+      throw err
+
     } finally {
       // always return the client to the pool
       client.release()
@@ -205,7 +271,7 @@ module.exports = class DBPool {
    * @param {Object} [options]
    * @param {number} [options.maxSessions=10] Maximum number of sessions allowed for the application at all times
    * @param {number} [options.threshold=0.8] Ratio of active sessions to maximum sessions to exceed before killing idle sessions
-   * @param {number} [options.since=5000] Minimum idle duration for a session to be considered for termination (in milliseconds) 
+   * @param {number} [options.since=5000] Minimum idle duration for a session to be considered for termination (in milliseconds)
    * @param {number} [options.frequency=0.01] Frequency at which the termination process should run on exit (e.g. 0.01 -> 1% of the time)
    * @return {Function} Middleware function
    */
