@@ -6,7 +6,7 @@
  */
 
 const { Pool } = require('pg')
-const { CustomError } = require('./errors')
+const { CustomError, sentry } = require('./errors')
 
 
 module.exports = class DBPool {
@@ -18,6 +18,13 @@ module.exports = class DBPool {
    */
   constructor(options) {
     this._pool = new Pool(options)
+    this._pool.on('error', (err) => {
+      // should recover from 'ADMIN SHUTDOWN' error caused when calling pg_terminate_backend()
+      // https://www.postgresql.org/docs/8.0/errcodes-appendix.html
+      if (err.code !== '57P01') {
+        throw err
+      }
+    })
   }
 
   /**
@@ -96,6 +103,131 @@ module.exports = class DBPool {
     } finally {
       // always return the client to the pool
       client.release()
+    }
+  }
+
+  /**
+   * Returns the number of postgres sessions for the current application
+   * @return {Promise<number>}
+   */
+  async getSessionsCount() {
+    const client = await this._acquireClient()
+    try {
+      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
+      if (!applicationName) {
+        throw new CustomError({
+          message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only get clients at the application level.',
+          name: 'SessCountDBPoolError',
+          logLevel: 'ERROR',
+        })
+      }
+      const { rows: [{ total = 0 }] = [{}] } = await client.query(`
+        SELECT COUNT(pid) as total
+        FROM pg_catalog.pg_stat_activity
+        WHERE application_name = $1;
+      `,
+      [applicationName])
+      return total
+    } finally {
+      // always return the client to the pool
+      client.release()
+    }
+  }
+
+  /**
+   * Returns the number of idle postgres sessions for the current application
+   * @param {number} [since=5000] Minimum idle duration (in milliseconds) 
+   * @return {Promise<number>}
+   */
+  async getIdleSessionsCount(since = 5000) {
+    const client = await this._acquireClient()
+    try {
+      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
+      if (!applicationName) {
+        throw new CustomError({
+          message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only get idle clients at the application level.',
+          name: 'IdleSessCountDBPoolError',
+          logLevel: 'ERROR',
+        })
+      }
+      const { rows: [{ idle = 0 }] = [{}] } = await client.query(`
+        SELECT COUNT(pid) as idle
+        FROM pg_catalog.pg_stat_activity
+        WHERE
+          application_name = $1 AND
+          state = 'idle' AND
+          state_change < now() - ($2 || ' milliseconds')::interval;
+      `,
+      [applicationName, since])
+      return idle
+    } finally {
+      // always return the client to the pool
+      client.release()
+    }
+  }
+
+  /**
+   * Terminate idle postgres sessions for the current application
+   * @param {number} [since=5000] Minimum idle duration (in milliseconds) 
+   * @return {Promise<number>} Promise resolving to the number of sessions terminated
+   */
+  async killIdleSessions(since = 5000) {
+    const client = await this._acquireClient()
+    try {
+      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
+      if (!applicationName) {
+        throw new CustomError({
+          message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only kill idle clients at the application level.',
+          name: 'KillIdleSessDBPoolError',
+          logLevel: 'ERROR',
+        })
+      }
+      // pg_terminate_backend terminates a session. Can only terminate a session owned by current user unless superuser
+      // https://docs.aws.amazon.com/redshift/latest/dg/PG_TERMINATE_BACKEND.html
+      const { rows: [{ cancelled = 0 }] = [{}] } = await client.query(`
+        SELECT COALESCE(SUM(pg_terminate_backend(pid)::int), 0) AS cancelled
+        FROM pg_catalog.pg_stat_activity
+        WHERE
+          application_name = $1 AND
+          state = 'idle' AND
+          state_change < now() - ($2 || ' milliseconds')::interval;
+      `,
+      [applicationName, since])
+      return cancelled
+    } finally {
+      // always return the client to the pool
+      client.release()
+    }
+  }
+
+  /**
+   * Returns Express middleware function to terminate idle postgres sessions for the current application
+   * @param {number} [maxSessions=10] Maximum number of sessions allowed for the application at all times
+   * @param {number} [threshold=0.8] Ratio of active sessions to maximum sessions to exceed before killing idle sessions
+   * @param {number} [since=5000] Minimum idle duration for a session to be considered for termination (in milliseconds) 
+   * @param {number} [frequency=0.01] Frequency at which the termination process should run on exit (e.g. 0.01 -> 1% of the time)
+   * @return {Function} Middleware function
+   */
+  killIdleSessionsOnExit(maxSessions = 10, threshold = 0.8, since = 5000, frequency = 0.01) {
+    return (_, res, next) => {
+      const listener = () => {
+        const exit = Math.random() > frequency
+        if (exit) {
+          return
+        }
+        
+        return this.getSessionsCount()
+          .then(sessions => sessions / maxSessions >= threshold)
+          .then(proceed => proceed ? this.killIdleSessions(since) : 0)
+          // eslint-disable-next-line no-console
+          .then((count) => console.log(`${count} idle clients have been terminated`))
+          // log all errors to Sentry
+          .catch(sentry().logError)
+      }
+      // attach listener to exit events
+      res.on('finish', listener) // this is legacy
+      res.on('close', listener)
+      next()
     }
   }
 

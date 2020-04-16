@@ -3,6 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const { sentry, errorHandler } = require('./modules/errors')
+const {rKillIdleOnExit, wKillIdleOnExit } = require('./modules/db')
 
 const api = require('./api')
 
@@ -19,6 +20,9 @@ app.use(cors())
 app.options('*', cors())
 // bodyParser for json
 app.use(bodyParser.json())
+
+// DB - close idle connections on exit
+app.use(rKillIdleOnExit, wKillIdleOnExit)
 
 // mount API endpoints by stage
 app.use(`/${process.env.STAGE || 'dev'}`, api)
