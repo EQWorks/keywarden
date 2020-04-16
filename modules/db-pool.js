@@ -202,13 +202,14 @@ module.exports = class DBPool {
 
   /**
    * Returns Express middleware function to terminate idle postgres sessions for the current application
-   * @param {number} [maxSessions=10] Maximum number of sessions allowed for the application at all times
-   * @param {number} [threshold=0.8] Ratio of active sessions to maximum sessions to exceed before killing idle sessions
-   * @param {number} [since=5000] Minimum idle duration for a session to be considered for termination (in milliseconds) 
-   * @param {number} [frequency=0.01] Frequency at which the termination process should run on exit (e.g. 0.01 -> 1% of the time)
+   * @param {Object} [options]
+   * @param {number} [options.maxSessions=10] Maximum number of sessions allowed for the application at all times
+   * @param {number} [options.threshold=0.8] Ratio of active sessions to maximum sessions to exceed before killing idle sessions
+   * @param {number} [options.since=5000] Minimum idle duration for a session to be considered for termination (in milliseconds) 
+   * @param {number} [options.frequency=0.01] Frequency at which the termination process should run on exit (e.g. 0.01 -> 1% of the time)
    * @return {Function} Middleware function
    */
-  killIdleSessionsOnExit(maxSessions = 10, threshold = 0.8, since = 5000, frequency = 0.01) {
+  killIdleSessionsOnExit({ maxSessions = 10, threshold = 0.8, since = 5000, frequency = 0.01 } = {}) {
     return (_, res, next) => {
       const listener = () => {
         const exit = Math.random() > frequency
@@ -217,14 +218,15 @@ module.exports = class DBPool {
         }
         
         return this.getSessionsCount()
-          .then(sessions => sessions / maxSessions >= threshold)
-          .then(proceed => proceed ? this.killIdleSessions(since) : 0)
+          .then((sessions) => sessions / maxSessions >= threshold)
+          .then((proceed) => proceed ? this.killIdleSessions(since) : 0)
           // eslint-disable-next-line no-console
           .then((count) => console.log(`${count} idle clients have been terminated`))
           // log all errors to Sentry
           .catch(sentry().logError)
       }
       // attach listener to exit events
+      // in cases where both events fire, frequency will 2x
       res.on('finish', listener) // this is legacy
       res.on('close', listener)
       next()

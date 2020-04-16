@@ -108,8 +108,8 @@ module.exports = {
   rQuery: (...params) => rPool.query(...params),
   wQuery: (...params) => wPool.query(...params),
   // middleware functions to kill idle sessions
-  // kill sessions that have been idle for more than 2 seconds, 1% of the time
+  // on exit 1% of the time, kill sessions that have been idle for more than 2 seconds
   // and when there are more than 12 active sessions (0.6 * 20)
-  rKillIdleOnExit: rPool.killIdleSessionsOnExit(20, 0.6, 2000, 0.01),
-  wKillIdleOnExit: wPool.killIdleSessionsOnExit(20, 0.6, 2000, 0.01),
+  rKillIdleOnExit: rPool.killIdleSessionsOnExit({ maxSessions: 20, threshold: 0.6, since: 2000, frequency: 0.01 }),
+  wKillIdleOnExit: wPool.killIdleSessionsOnExit({ maxSessions: 20, threshold: 0.6, since: 2000, frequency: 0.01 }),
 }
