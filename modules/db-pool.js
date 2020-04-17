@@ -5,6 +5,7 @@
  * Lambda Execution Context: https://docs.aws.amazon.com/lambda/latest/dg/runtimes-context.html
  */
 
+const { Socket } = require('net')
 const { Pool } = require('pg')
 const { CustomError, sentry } = require('./errors')
 
@@ -14,22 +15,26 @@ const { CustomError, sentry } = require('./errors')
  * @returns {boolean}
  */
 const clientIsHealthy = (client) => {
-  if (!client.connection || !client.connection.stream) {
+  try {
+    // Streams: https://nodejs.org/api/stream.html
+    const streamHealthChecks = {
+      readable: true,
+      readableEnded: false,
+      writable: true,
+      writableEnded: false,
+      writableFinished: false,
+      destroyed: false,
+    }
+    // ok if undefined as some stream properties were only added in node 12.9.0
+    // stream should be an instance of net.Socket (itself a stream.Duplex)
+    return client.connection.stream instanceof Socket && Object.entries(streamHealthChecks).every(
+      ([key, value]) => key in client.connection.stream ? client.connection.stream[key] === value : true
+    )
+
+  } catch (_) {
+    // return false if client is malformed (i.e. connection or stream keys are missing or stream is not an object)
     return false
   }
-  // Streams: https://nodejs.org/api/stream.html
-  const streamHealthChecks = {
-    readable: true,
-    readableEnded: false,
-    writable: true,
-    writableEnded: false,
-    writableFinished: false,
-    destroyed: false,
-  }
-  // ok if undefined as some stream properties were only added in node 12.9.0
-  return Object.entries(streamHealthChecks).every(
-    ([key, value]) => key in client.connection.stream ? client.connection.stream[key] === value : true
-  )
 }
 
 module.exports = class DBPool {
@@ -44,9 +49,13 @@ module.exports = class DBPool {
     this._pool.on('error', (err) => {
       // should recover from 'ADMIN SHUTDOWN' error caused when calling pg_terminate_backend()
       // https://www.postgresql.org/docs/8.0/errcodes-appendix.html
-      if (err.code !== '57P01') {
-        throw err
+      if (err.code === '57P01') {
+        // MONITOR SENTRY THEN REMOVE
+        sentry().logError(new CustomError({ message: 'Client terminated successfully', name: 'DBPoolDebug', logLevel: 'DEBUG' }))
+        return
       }
+      // unhandled error
+      throw err
     })
   }
 
@@ -56,14 +65,18 @@ module.exports = class DBPool {
    * @return {Promise<pg.Client>}
    */
   async _acquireClient() {
+    // allow the node event loop to run one full cycle and hit the 'close' phase before acquiring client
+    // eslint-disable-next-line no-undef
+    await new Promise((resolve) => setTimeout(resolve, 0))
     const client = await this._pool.connect()
     
     // perform health check
     if (clientIsHealthy(client)) {
       return client
     }
+    sentry().logError(new CustomError({ message: 'Unhealthy client detected in _acquireClient() after timeout', name: 'DBPoolDebug', logLevel: 'DEBUG' }))
   
-    // else if write() and/or read() are not callable, connection is stale
+    // else connection is stale
     try {
       await client.end()
       // acquire another client
@@ -95,6 +108,7 @@ module.exports = class DBPool {
       // if client is not healthy, try again with new client
       // TODO: if needed add a maxAtempts option
       if (attempt === 0 && !clientIsHealthy(client)) {
+        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.query(text, values, attempt + 1)
       }
       throw err
@@ -134,6 +148,7 @@ module.exports = class DBPool {
 
       // if client is not healthy, try again with new client
       if (attempt === 0 && !clientIsHealthy(client)) {
+        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.transaction(cb, attempt + 1)
       }
 
@@ -172,6 +187,7 @@ module.exports = class DBPool {
     } catch (err) {
       // if client is not healthy, try again with new client
       if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
+        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.getSessionsCount(attempt + 1)
       }
       throw err
@@ -213,6 +229,7 @@ module.exports = class DBPool {
     } catch (err) {
       // if client is not healthy, try again with new client
       if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
+        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.getIdleSessionsCount(since, attempt + 1)
       }
       throw err
@@ -256,6 +273,7 @@ module.exports = class DBPool {
     } catch (err) {
       // if client is not healthy, try again with new client
       if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
+        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.killIdleSessions(since, attempt + 1)
       }
       throw err
