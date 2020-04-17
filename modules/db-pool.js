@@ -65,18 +65,17 @@ module.exports = class DBPool {
    * @return {Promise<pg.Client>}
    */
   async _acquireClient() {
-    // allow the node event loop to run one full cycle and hit the 'close' phase before acquiring client
+    // allow the node event loop to run, hit the 'close' phase and following 'polling' phase before acquiring the client
     // eslint-disable-next-line no-undef
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(() => setTimeout(resolve, 0), 0))
+
     const client = await this._pool.connect()
-    
     // perform health check
     if (clientIsHealthy(client)) {
       return client
     }
-    sentry().logError(new CustomError({ message: 'Unhealthy client detected in _acquireClient() after timeout', name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-  
     // else connection is stale
+    sentry().logError(new CustomError({ message: 'Unhealthy client detected in _acquireClient() after timeout', name: 'DBPoolDebug', logLevel: 'DEBUG' }))
     try {
       await client.end()
       // acquire another client
