@@ -55,6 +55,7 @@ module.exports = class DBPool {
         return
       }
       // unhandled error
+      sentry().logError(new CustomError({ message: `Unhandled error: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
       throw err
     })
   }
@@ -110,6 +111,7 @@ module.exports = class DBPool {
         sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.query(text, values, attempt + 1)
       }
+      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
       throw err
 
     } finally {
@@ -150,7 +152,7 @@ module.exports = class DBPool {
         sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.transaction(cb, attempt + 1)
       }
-
+      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
       throw err
   
     } finally {
@@ -189,6 +191,7 @@ module.exports = class DBPool {
         sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.getSessionsCount(attempt + 1)
       }
+      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
       throw err
 
     } finally {
@@ -231,6 +234,7 @@ module.exports = class DBPool {
         sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.getIdleSessionsCount(since, attempt + 1)
       }
+      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
       throw err
 
     } finally {
@@ -275,6 +279,7 @@ module.exports = class DBPool {
         sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
         return this.killIdleSessions(since, attempt + 1)
       }
+      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
       throw err
 
     } finally {
@@ -295,8 +300,8 @@ module.exports = class DBPool {
   killIdleSessionsOnExit({ maxSessions = 10, threshold = 0.8, since = 5000, frequency = 0.01 } = {}) {
     return (_, res, next) => {
       const listener = () => {
-        const exit = Math.random() > frequency
-        if (exit) {
+        // early return if pool has no active client or if frequency test not met
+        if (this.pool.totalCount === 0 || Math.random() > frequency) {
           return
         }
         
