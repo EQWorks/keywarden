@@ -7,7 +7,7 @@
 
 const { Socket } = require('net')
 const { Pool } = require('pg')
-const { CustomError, sentry } = require('./errors')
+const { CustomError } = require('./errors')
 
 // Streams: https://nodejs.org/api/stream.html
 const streamHealthChecks = {
@@ -73,14 +73,28 @@ module.exports = class DBPool {
   /**
    * Wrapper around node-pg's Pool
    * @param {pg.PoolConfig} [options] See node-pg's Pool documentation for full
+   * @param {(err: Error) => any)} [options.errorLogger] Function to which the error will be passed for logging
    * list of options - https://node-postgres.com/features/connecting#environment-variables
    * @return {DBPool}
    */
-  constructor(options) {
-    this._pool = new Pool(options)
+  constructor({ errorLogger, ...pgOptions }) {
+    this._pool = new Pool(pgOptions)
     this._pool.on('error', () => {
       // do nothing: node-pg will take care of active queries, disconnected client
+      // error handler must be attached for errors not to be thrown as Pool extends node's EventEmitter
     })
+    this._errorLogger = errorLogger
+  }
+
+  /**
+   * Logs errors to supplied 'errorLogger' (constructor option) if any, does nothing otherwise
+   * @param {Error} err
+   * @return {void}
+   */
+  _logError(err) {
+    if (this._errorLogger) {
+      this._errorLogger(err)
+    }
   }
 
   /**
@@ -104,7 +118,7 @@ module.exports = class DBPool {
       name: 'DBPoolDebug',
       logLevel: 'DEBUG'
     })
-    sentry().logError(unhealthyErr)
+    this._logError(unhealthyErr)
     try {
       // pass error to release to remove the client from the node-pg Pool
       client.release(unhealthyErr)
@@ -141,7 +155,7 @@ module.exports = class DBPool {
     } catch (err) {
       // if client is not healthy, try again with new client
       if (attempt < this.pool.max && (isConnectionError(err) || !connectionIsHealthy(client))) {
-        sentry().logError(new CustomError({
+        this._logError(new CustomError({
           message: `Connection error detected in _retryOnConnectionError(). Failed checks: ${JSON.stringify(getConnectionFailedChecks(client))}. Error: [code: ${err.code}] ${err.message}`,
           name: 'DBPoolDebug',
           logLevel: 'DEBUG'
@@ -307,8 +321,8 @@ module.exports = class DBPool {
           .then((proceed) => proceed ? this.killIdleSessions(since) : 0)
           // eslint-disable-next-line no-console
           .then((count) => console.log(`${count} idle clients have been terminated`))
-          // log all errors to Sentry
-          .catch(sentry().logError)
+          // log all errors
+          .catch((err) => this._logError(err))
       }
       // attach listener to exit events
       // in cases where both events fire, frequency will 2x
