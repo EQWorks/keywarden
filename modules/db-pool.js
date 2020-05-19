@@ -7,24 +7,25 @@
 
 const { Socket } = require('net')
 const { Pool } = require('pg')
-const { CustomError, sentry } = require('./errors')
+const { CustomError } = require('./errors')
+
+// Streams: https://nodejs.org/api/stream.html
+const streamHealthChecks = {
+  readable: true,
+  readableEnded: false,
+  writable: true,
+  writableEnded: false,
+  writableFinished: false,
+  destroyed: false,
+}
 
 /**
  * Checks if connection stream is both readable and writable
  * @param {pg.Client} client
  * @returns {boolean}
  */
-const clientIsHealthy = (client) => {
+const connectionIsHealthy = (client) => {
   try {
-    // Streams: https://nodejs.org/api/stream.html
-    const streamHealthChecks = {
-      readable: true,
-      readableEnded: false,
-      writable: true,
-      writableEnded: false,
-      writableFinished: false,
-      destroyed: false,
-    }
     // ok if undefined as some stream properties were only added in node 12.9.0
     // stream should be an instance of net.Socket (itself a stream.Duplex)
     return client.connection.stream instanceof Socket && Object.entries(streamHealthChecks).every(
@@ -37,27 +38,63 @@ const clientIsHealthy = (client) => {
   }
 }
 
+/**
+ * Returns unexpected connection properties
+ * @param {pg.Client} client
+ * @returns {boolean}
+ */
+const getConnectionFailedChecks = (client) => {
+  try {
+    if (!(client.connection.stream instanceof Socket)) {
+      throw Error('Malformed connection object!')
+    }
+
+    return Object.entries(streamHealthChecks).reduce((failedChecks, [key, value]) => {
+      if (client.connection.stream[key] !== value) {
+        failedChecks[key] = client.connection.stream[key]
+      }
+      return failedChecks
+    }, {})
+
+  } catch (_) {
+    // return false if client is malformed (i.e. connection or stream keys are missing or stream is not an object)
+    return { socket: false }
+  }
+}
+
+/**
+ * Checks if error emitted by pg pool indicates that connection was terminated
+ * @param {Error} err
+ * @returns {boolean}
+ */
+const isConnectionError = (err) => err.code === '57P01' || err.message === 'Connection terminated unexpectedly'
+
 module.exports = class DBPool {
   /**
    * Wrapper around node-pg's Pool
    * @param {pg.PoolConfig} [options] See node-pg's Pool documentation for full
+   * @param {(err: Error) => any)} [options.errorLogger] Function to which the error will be passed for logging
    * list of options - https://node-postgres.com/features/connecting#environment-variables
    * @return {DBPool}
    */
-  constructor(options) {
-    this._pool = new Pool(options)
-    this._pool.on('error', (err) => {
-      // should recover from 'ADMIN SHUTDOWN' error caused when calling pg_terminate_backend()
-      // https://www.postgresql.org/docs/8.0/errcodes-appendix.html
-      if (err.code === '57P01') {
-        // MONITOR SENTRY THEN REMOVE
-        sentry().logError(new CustomError({ message: 'Client terminated successfully', name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-        return
-      }
-      // unhandled error
-      sentry().logError(new CustomError({ message: `Unhandled error: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-      throw err
+  constructor({ errorLogger, ...pgOptions }) {
+    this._pool = new Pool(pgOptions)
+    this._pool.on('error', () => {
+      // do nothing: node-pg will take care of active queries, disconnected client
+      // error handler must be attached for errors not to be thrown as Pool extends node's EventEmitter
     })
+    this._errorLogger = errorLogger
+  }
+
+  /**
+   * Logs errors to supplied 'errorLogger' (constructor option) if any, does nothing otherwise
+   * @param {Error} err
+   * @return {void}
+   */
+  _logError(err) {
+    if (this._errorLogger) {
+      this._errorLogger(err)
+    }
   }
 
   /**
@@ -70,54 +107,84 @@ module.exports = class DBPool {
     // eslint-disable-next-line no-undef
     await new Promise((resolve) => setTimeout(() => setTimeout(resolve, 0), 0))
 
-    const client = await this._pool.connect()
+    const client = await this.pool.connect()
     // perform health check
-    if (clientIsHealthy(client)) {
+    if (connectionIsHealthy(client)) {
       return client
     }
     // else connection is stale
-    sentry().logError(new CustomError({ message: 'Unhealthy client detected in _acquireClient() after timeout', name: 'DBPoolDebug', logLevel: 'DEBUG' }))
+    const unhealthyErr = new CustomError({
+      message: `Unhealthy connection detected in _acquireClient() after timeout. Failed checks: ${JSON.stringify(getConnectionFailedChecks(client))}`,
+      name: 'DBPoolDebug',
+      logLevel: 'DEBUG'
+    })
+    this._logError(unhealthyErr)
     try {
-      await client.end()
+      // pass error to release to remove the client from the node-pg Pool
+      client.release(unhealthyErr)
       // acquire another client
       return this._acquireClient()
   
     } catch(err) {
-      throw new CustomError({ message: `Error while acquiring DB client: ${err.message}`, name: 'ClientAcquisitionDBPoolError', logLevel: 'ERROR' })
+      throw new CustomError({
+        message: `Error while acquiring DB client: [code: ${err.code}] ${err.message}`,
+        name: 'ClientAcquisitionDBPoolError',
+        logLevel: 'ERROR'
+      })
   
     } finally {
-      client.release()
+      // make sure that the client is not in released status otherwise node-pg throws error
+      if(!client.released) {
+        client.release()
+      }
     }
   }
-  
+
   /**
-   * Perfoms a single SQL querie
-   * Wrapper around node-pg's Pool.prototype.query()
-   * @param {string} text
-   * @param {Array<any>} [values]
+   * Runs callback function successively until there are no connection errors
+   * @param {(client: pg.Client) => Promise<any>} cb Function to execute
    * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<Any>} Promise resolving to the return value of the callback function.
    */
-  async query(text, values, attempt = 0) {
+  async _retryOnConnectionError(cb, attempt = 0) {
     const client = await this._acquireClient()
     try {
       // run query
-      return await client.query(text, values)
+      return await cb(client)
 
     } catch (err) {
       // if client is not healthy, try again with new client
-      // TODO: if needed add a maxAtempts option
-      if (attempt === 0 && !clientIsHealthy(client)) {
-        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-        return this.query(text, values, attempt + 1)
+      if (attempt < this.pool.max && (isConnectionError(err) || !connectionIsHealthy(client))) {
+        this._logError(new CustomError({
+          message: `Connection error detected in _retryOnConnectionError(). Failed checks: ${JSON.stringify(getConnectionFailedChecks(client))}. Error: [code: ${err.code}] ${err.message}`,
+          name: 'DBPoolDebug',
+          logLevel: 'DEBUG'
+        }))
+        // pass error to release to remove the client from the node-pg Pool
+        client.release(err)
+        return this._retryOnConnectionError(cb, attempt + 1)
       }
-      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
       throw err
 
     } finally {
       // always return the client to the pool
-      client.release()
+      // make sure that the client is not in released status otherwise node-pg throws error
+      if(!client.released) {
+        client.release()
+      }
     }
+
+  }
+  
+  /**
+   * Perfoms a single SQL query
+   * Wrapper around node-pg's Pool.prototype.query()
+   * @param {string} text
+   * @param {Array<any>} [values]
+   * @return {Promise<Any>} Promise resolving to the return value of pg query
+   */
+  query(text, values) {
+    return this._retryOnConnectionError(async (client) => await client.query(text, values))
   }
   
   /**
@@ -126,50 +193,37 @@ module.exports = class DBPool {
    * @param {(query: (text: string, values?: Array<any>) => Promise<any>) => Promise<any>} cb
    * Async callback function taking one parameter: a function with signature and behaviour
    * identical to node-pg's Pool.prototype.query().
-   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<Any>} Promise resolving to the return value of the callback function.
    */
-  async transaction(cb, attempt = 0) {
-    const client = await this._acquireClient()
-    try {
-      // start transaction
-      await client.query('BEGIN')
-  
-      // query function to be passed to the callback
-      const query = (...args) => client.query(...args)
-      const output = await cb(query)
-  
-      // commit if no errors
-      await client.query('COMMIT')
-      return output
-  
-    } catch (err) {
-      // if error, rollback all changes to db and rethrow
-      await client.query('ROLLBACK')
-
-      // if client is not healthy, try again with new client
-      if (attempt === 0 && !clientIsHealthy(client)) {
-        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-        return this.transaction(cb, attempt + 1)
+  transaction(cb) {
+    return this._retryOnConnectionError(async (client) => {
+      try {
+        // start transaction
+        await client.query('BEGIN')
+    
+        // query function to be passed to the callback
+        const query = (...args) => client.query(...args)
+        const output = await cb(query)
+    
+        // commit if no errors
+        await client.query('COMMIT')
+        return output
+    
+      } catch (err) {
+        // if error, rollback all changes to db and rethrow
+        await client.query('ROLLBACK')
+        throw err
       }
-      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-      throw err
-  
-    } finally {
-      // always return the client to the pool
-      client.release()
-    }
+    })
   }
 
   /**
    * Returns the number of postgres sessions for the current application
-   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<number>}
    */
-  async getSessionsCount(attempt = 0) {
-    const client = await this._acquireClient()
-    const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
-    try {
+  getSessionsCount() {
+    return this._retryOnConnectionError(async (client) => {
+      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
       if (!applicationName) {
         throw new CustomError({
           message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only get clients at the application level.',
@@ -184,32 +238,17 @@ module.exports = class DBPool {
       `,
       [applicationName])
       return total
-
-    } catch (err) {
-      // if client is not healthy, try again with new client
-      if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
-        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-        return this.getSessionsCount(attempt + 1)
-      }
-      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-      throw err
-
-    } finally {
-      // always return the client to the pool
-      client.release()
-    }
+    })
   }
 
   /**
    * Returns the number of idle postgres sessions for the current application
    * @param {number} [since=5000] Minimum idle duration (in milliseconds)
-   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<number>}
    */
-  async getIdleSessionsCount(since = 5000, attempt = 0) {
-    const client = await this._acquireClient()
-    const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
-    try {
+  getIdleSessionsCount(since = 5000) {
+    return this._retryOnConnectionError(async (client) => {
+      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
       if (!applicationName) {
         throw new CustomError({
           message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only get idle clients at the application level.',
@@ -227,32 +266,17 @@ module.exports = class DBPool {
       `,
       [applicationName, since])
       return idle
-
-    } catch (err) {
-      // if client is not healthy, try again with new client
-      if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
-        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-        return this.getIdleSessionsCount(since, attempt + 1)
-      }
-      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-      throw err
-
-    } finally {
-      // always return the client to the pool
-      client.release()
-    }
+    })
   }
 
   /**
    * Terminates idle postgres sessions for the current application
    * @param {number} [since=5000] Minimum idle duration (in milliseconds)
-   * @param {number} [attempt=0] Current attempt to execute function successfully (0-based)
    * @return {Promise<number>} Promise resolving to the number of sessions terminated
    */
-  async killIdleSessions(since = 5000, attempt = 0) {
-    const client = await this._acquireClient()
-    const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
-    try {
+  killIdleSessions(since = 5000) {
+    return this._retryOnConnectionError(async (client) => {
+      const applicationName = client.connectionParameters.application_name || client.connectionParameters.fallback_application_name
       if (!applicationName) {
         throw new CustomError({
           message: 'Missing \'application_name\' and \'fallback_application_name\' parameters. Can only kill idle clients at the application level.',
@@ -272,20 +296,7 @@ module.exports = class DBPool {
       `,
       [applicationName, since])
       return cancelled
-
-    } catch (err) {
-      // if client is not healthy, try again with new client
-      if (applicationName && attempt === 0 && !clientIsHealthy(client)) {
-        sentry().logError(new CustomError({ message: `Unhealthy client detected in query phase: ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-        return this.killIdleSessions(since, attempt + 1)
-      }
-      sentry().logError(new CustomError({ message: `Error caught in query phase: [code: ${err.code}] ${err.message}`, name: 'DBPoolDebug', logLevel: 'DEBUG' }))
-      throw err
-
-    } finally {
-      // always return the client to the pool
-      client.release()
-    }
+    })
   }
 
   /**
@@ -310,8 +321,8 @@ module.exports = class DBPool {
           .then((proceed) => proceed ? this.killIdleSessions(since) : 0)
           // eslint-disable-next-line no-console
           .then((count) => console.log(`${count} idle clients have been terminated`))
-          // log all errors to Sentry
-          .catch(sentry().logError)
+          // log all errors
+          .catch((err) => this._logError(err))
       }
       // attach listener to exit events
       // in cases where both events fire, frequency will 2x
