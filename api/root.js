@@ -17,7 +17,7 @@ router.get('/', (_, res) => {
 
 // GET /login
 router.get('/login', hasQueryParams('user'), (req, res, next) => {
-  const { user, redirect, zone, product='ATOM' } = req.query
+  const { user, redirect, zone, product = 'atom' } = req.query
   const { STAGE = 'dev' } = process.env
   let origin = `${req.protocol}://${req.get('host')}`
   if (STAGE) {
@@ -39,10 +39,11 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
 
 // GET /verify
 router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
-  const { user, reset_uuid } = req.query
+  const { user, reset_uuid, product } = req.query
   verifyOTP({
     ...req.query,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
+    product
   }).then(token => {
     return res.json({
       message: `User ${user} verified, please store and use the token responsibly`,
@@ -60,8 +61,8 @@ router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
 
 // GET /refresh
 router.get('/refresh', confirmed(), (req, res) => {
-  const { email, api_access, jwt_uuid } = req.userInfo
-  const token = signJWT({ email, api_access, jwt_uuid })
+  const { email, api_access, jwt_uuid, product } = req.userInfo
+  const token = signJWT({ email, api_access, jwt_uuid, product: product.toLowerCase() })
   return res.json({
     message: `Token refreshed for user ${email}, please store and use the token responsibly`,
     token,

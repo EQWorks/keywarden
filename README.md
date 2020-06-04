@@ -14,7 +14,7 @@ Make sure to install [`print-env`](https://pypi.org/project/print-env/) (require
 
 `GET /login?user=<REQUIRED: email>&redirect=[OPTIONAL: redirect URL]`
 
-This adapts EQ's existing "passwordless" login process, generates OTP (one-time passcode) and send to user through email (as both "magic link" and the plaintext passcode).
+This adapts EQ's existing "passwordless" login process, generates OTP (one-time passcode) and send to user through email (as both "magic link" and the plaintext passcode). The OTP is product-agnostic.
 
 ![OTP](https://vignette.wikia.nocookie.net/yugioh/images/9/92/OneTimePasscode-CIBR-EN-R-1E.png/revision/latest/scale-to-width-down/300?cb=20171020172733)
 
@@ -32,25 +32,26 @@ Upon receiving this, the requesting client should make `GET /verify` request on 
 
 ### Verify OTP
 
-`GET /verify?user=<REQUIRED: email>&otp=<REQUIRED: one-time passcode>&reset_uuid=[OPTIONAL: 1 or true]`
+`GET /verify?user=<REQUIRED: email>&otp=<REQUIRED: one-time passcode>&reset_uuid=[OPTIONAL: 1|true]&product=[OPTIONAL: atom|locus]`
 
-Upon receiving and validating the OTP obtained from the `/login` process, instead of having the requesting application to generate and maintain a "session", `keywarden` signs a stateless [JWT (JSON web token)](https://jwt.io) for the requesting application to use for further API access against `overseer` and alike.
+Upon receiving and validating the OTP obtained from the `/login` process, instead of having the requesting application to generate and maintain a "session", `keywarden` signs a stateless [JWT (JSON web token)](https://jwt.io) for the requesting product (default: 'atom') to use for further API access against `overseer` and alike.
 
 If `reset_uuid` is supplied as a value of `1` or `true`, given `user`'s `jwt_uuid` will be reset to a new value. This can be used to effectively invalidate all past tokens of given `user`.
 
 ### Confirm JWT 
 
-`GET /confirm?light=[OPTIONAL: 1 or true]`
+`GET /confirm?light=[OPTIONAL: 1|true]&product=[OPTIONAL: atom|locus]`
 
 JWT supplied as `Header 'eq-api-jwt'`
 
 This endpoint performs the following confirmation/validation:
 1. A preliminary `jwt.verify` against the secret that signed the token.
+2. A check that the jwt was issued for the referenced `product` (default: 'atom')
 2. If `light` is not supplied or not a value of `1` or `true`, a further integrity check against the user database will be performed.
 
 ### Refresh JWT
 
-`GET /refresh?reset_uuid=[OPTIONAL: 1 or true]`
+`GET /refresh?reset_uuid=[OPTIONAL: 1|true]&product=[OPTIONAL: atom|locus]`
 
 JWT supplied as `Header 'eq-api-jwt'`
 

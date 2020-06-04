@@ -47,8 +47,8 @@ const getUserInfo = async ({ email, product = 'atom' }) => {
   }
 }
 
-const _validateOTP = async ({ email, otp, reset_uuid = false }) => {
-  const userInfo = await getUserInfo({ email })
+const _validateOTP = async ({ email, otp, reset_uuid = false, product = 'atom' }) => {
+  const userInfo = await getUserInfo({ email, product })
   const _otp = await getOTP(email) || {}
   const { prefix, api_access = {} } = userInfo
   let { jwt_uuid } = userInfo
@@ -86,7 +86,7 @@ const _resetUUID = async ({ email }) => {
 const _genOTP = (digit = 6) => String(Math.random()).substring(2, digit + 2)
 
 // update user OTP and send it along with TTL through email
-const loginUser = async ({ user, redirect, zone='utc', product='ATOM' }) => {
+const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
   // TODO: add logo in when email template has logo
@@ -99,7 +99,7 @@ const loginUser = async ({ user, redirect, zone='utc', product='ATOM' }) => {
   // generate and update user OTP, get TTL
   const otp = (userPrefix !== 'appreviewer') ? _genOTP() : '*'.charCodeAt(0).toString(2)
   
-  let ttl = await _updateOTP({ email: user, otp })
+  let ttl = await _updateOTP({ email: user, otp, product })
   // localize TTL
   ttl = moment.tz(ttl, zone).format('LLLL z')
 
@@ -127,20 +127,20 @@ const loginUser = async ({ user, redirect, zone='utc', product='ATOM' }) => {
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn })
 
 // verify user OTP and sign JWT on success
-const verifyOTP = async ({ user: email, otp, reset_uuid = false }) => {
+const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = 'atom' }) => {
   const { api_access, jwt_uuid, prefix } = await _validateOTP({
     email,
     otp,
     reset_uuid,
+    product,
   })
-  return signJWT({ email, api_access, jwt_uuid, prefix })
+  return signJWT({ email, api_access, jwt_uuid, prefix, product: product.toLowerCase() })
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
 
 // confirm user with supplied JWT payload
-const confirmUser = async payload => {
-  const { email, api_access, jwt_uuid, reset_uuid, product } = payload
+const confirmUser = async ({ email, api_access, jwt_uuid, reset_uuid, product }) => {
   const userInfo = await getUserInfo({ email, product })
   const { api_access: _access, jwt_uuid: _uuid } = userInfo
   // confirm both JWT UUID and api_access integrity
