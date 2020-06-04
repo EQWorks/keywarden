@@ -3,8 +3,8 @@ const { sentry, AuthorizationError, APIError } = require('../modules/errors')
 
 // JWT confirmation middleware
 const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
-  const { light, reset_uuid, product = 'atom' } = req.query
-  const fields = ['email', 'api_access', 'jwt_uuid']
+  const { light, reset_uuid, product: targetProduct  = 'atom' } = req.query
+  const fields = ['email', 'api_access', 'jwt_uuid', 'product']
   const token = req.get('eq-api-jwt')
   let user
   // preliminary jwt verify
@@ -20,6 +20,11 @@ const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
   if (!fields.every(k => k in user)) {
     return next(new AuthorizationError('JWT missing required fields in payload'))
   }
+  // product check
+  if (user.product.toLowerCase() !== targetProduct.toLowerCase()) {
+    return next(new AuthorizationError('JWT no valid for this resource'))
+  }
+
   // DB integrity check
   if (allowLight && ['1', 'true'].includes(light)) {
     req.userInfo = { ...user, light: true }
@@ -28,7 +33,7 @@ const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
   confirmUser({
     ...user,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
-    product,
+    product: targetProduct,
   })
     .then(userInfo => {
       req.userInfo = { ...userInfo, light: false }
