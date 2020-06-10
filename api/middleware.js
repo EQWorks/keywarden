@@ -21,8 +21,8 @@ const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
     return next(new AuthorizationError('JWT missing required fields in payload'))
   }
   // product check
-  if (user.product.toLowerCase() !== targetProduct.toLowerCase()) {
-    return next(new AuthorizationError('JWT no valid for this resource'))
+  if (targetProduct !== 'all' && user.product.toLowerCase() !== targetProduct.toLowerCase()) {
+    return next(new AuthorizationError('JWT not valid for this resource'))
   }
 
   // DB integrity check
@@ -33,7 +33,8 @@ const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
   confirmUser({
     ...user,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
-    product: targetProduct,
+    // check accesses relative to product embedded in jwt when query param 'product' === 'all'
+    product: (targetProduct === 'all' ? user.product : targetProduct),
   })
     .then(userInfo => {
       req.userInfo = { ...userInfo, light: false }
