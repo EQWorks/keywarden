@@ -1,103 +1,71 @@
+const crypto = require('crypto')
+
 /**
- * Redis OTP
+ * Returns the current unix time interval according to intervalLength
+ * @param {number} [intervalLength=1000] Time interval length (in milliseconds)
+ * @return {number} Current unix time interval
  */
-const redis = require('redis')
-const { promisify } = require('util')
-const { APIError } = require('./errors')
-
-
-// REDIS HELPERS
-class RedisError extends APIError {
-  /**
-   * Create a new instance of RedisError
-   * Accepts either a string (message) or an options object as unique argument
-   * @param {(string|{message: string})} options
-   * @return {RedisError}
-   */
-  constructor(options) {
-    const _options = typeof options === 'string' ? { message: options } : options || {}
-    super({ ..._options, statusCode: 500, logLevel: 'ERROR' })
-    this.name = 'RedisError'
-  }
+const getTimeInterval = (intervalLength = 1000) => {
+  return (Date.now() / intervalLength) >> 0
 }
 
-// lazy init Redis client
-const _redisClient = (url) => {
-  let client
-
-  const initRedisClient = (url) => {
-    const retry_strategy = (options) => {
-      if (options.error && options.error.code === 'ECONNREFUSED') {
-        // End reconnecting on a specific error and flush all commands with
-        // a individual error
-        return new RedisError('The server refused the connection')
-      }
-      if (options.total_retry_time > 1000 * 60 * 5) {
-        // End reconnecting after a specific timeout (5 mins) and flush all commands
-        // with a individual error
-        return new RedisError('Retry time exhausted')
-      }
-      if (options.attempt > 10) {
-        // End reconnecting with built in error
-        return new RedisError('No more tries')
-      }
-      // reconnect after (all in ms)
-      return Math.min(options.attempt * 100, 3000)
-    }
-
-    const client = redis.createClient(url, { retry_strategy })
-
-    client.on('error', (err) => {
-      throw new RedisError(`Error with Redis client: ${err.message}`)
-    })
-
-    return client
-  }
-
-  // init and/or returns client
-  return () => {
-    if (!client) {
-      client = initRedisClient(url)
-    }
-    return client
-  }
-}
-
-// sets key/value/expiry and returns redis response ('OK' if successful)
-const _setRedisKey = (client, ...args) => promisify(client.set).bind(client)(...args)
-  .catch(err => { throw new RedisError(`Error setting the Redis key: ${err.message}`) })
+/**
+ * Generates a TOTP with a TTL equal to the end of the current unix time interval
+ * adjusted for intervalOffset
+ * @param {Object} [options]
+ * @param {string} options.email
+ * @param {string} options.secret
+ * @param {string} [options.length=6] Length of the TOTP string (max 32, multiple of 2)
+ * @param {number} [options.intervalLength=1000*60*5] Time interval length (in milliseconds)
+ * @param {number} [options.intervalOffset=0] Offset relative to the current unix
+ * time interval (calculatd according to intervalLength)
+ * @return {({ otp: string, ttl: number})} TOTP object
+ */
+const genTOTP = ({ email, secret, length = 6, intervalLength = 1000 * 60 * 5, intervalOffset = 0 }) => {
+  const timeInterval = getTimeInterval(intervalLength) + intervalOffset
+  const otp = crypto.createHmac('sha256', secret + timeInterval)
+    .update(email, 'utf8')
+    .digest()
+    .swap64()
+    .slice(- Math.ceil(length / 2))
+    .toString('hex')
+    .toUpperCase()
+  const ttl = (timeInterval + 1) * intervalLength - 1
   
-// gets value for key and returns redis response
-const _getRedisKey = (client, ...args) => promisify(client.get).bind(client)(...args)
-  .catch(err => { throw new RedisError(`Error getting the Redis key: ${err.message}`) })
-  
-// deletes key and returns redis response (1 if deleted, 0 otherwise)
-const _deleteRedisKey = (client, ...args) =>  promisify(client.del).bind(client)(...args)
-  .catch(err => { throw new RedisError(`Error deleting the Redis key: ${err.message}`) })
-
-// OTP EXPORTS
-const getRedisClient = _redisClient(process.env.REDIS_URL)
-
-// returns 1 if successful (mirrors db.updateUser())
-const saveOTP = async (email, otp, ttl) => {
-  const redisOTP = JSON.stringify(otp)
-  await _setRedisKey(getRedisClient(), `keywarden-otp-${email}`, redisOTP, 'PX', ttl)
-  return 1
+  return { otp, ttl }
 }
 
-// returns otp object (null if does not exist)
-const getOTP = async (email) => {
-  const redisOTP = await _getRedisKey(getRedisClient(), `keywarden-otp-${email}`)
-  return JSON.parse(redisOTP)
+/**
+ * Returns a TOTP to expire at the end of the next unix time interval
+ * @param {Object} [options]
+ * @param {string} options.email
+ * @param {string} options.secret
+ * @param {string} [options.length=6] Length of the TOTP string (max 32, multiple of 2)
+ * @param {number} [options.intervalLength=1000*60*5] Time interval length (in milliseconds)
+ * @return {({ otp: string, ttl: number})} TOTP object
+ */
+const claimTOTP = ({ email, secret, length = 6, intervalLength = 1000 * 60 * 5 }) => {
+  return genTOTP({ email, secret, length, intervalLength, intervalOffset: 1 })
 }
 
-// returns 1 if deleted, 0 otherwise
-const deleteOTP = (email) => _deleteRedisKey(getRedisClient(), `keywarden-otp-${email}`)
+/**
+ * Checks that the supplied TOTP is valid for the current or next unix time interval
+ * @param {Object} [options]
+ * @param {string} options.otp OTP for which validation is sought
+ * @param {string} options.email
+ * @param {string} options.secret
+ * @param {string} [options.length=6] Length of the TOTP string (max 32, multiple of 2)
+ * @param {number} [options.intervalLength=1000*60*5] Time interval length (in milliseconds)
+ * @return {boolean} true if the TOTP is valid, false otherwise
+ */
+const validateTOTP = ({ otp, email, secret, length = 6, intervalLength = 1000 * 60 * 5 }) => {
+  // can redeeem TOTP for current and next time interval
+  otp = otp.trim().toUpperCase()
+  return otp === genTOTP({ email, secret, length, intervalLength, intervalOffset: 1 }).otp ||
+    otp === genTOTP({ email, secret, length, intervalLength, intervalOffset: 0 }).otp
+}
 
 module.exports = {
-  getRedisClient,
-  getOTP,
-  saveOTP,
-  deleteOTP,
-  RedisError,
+  claimTOTP,
+  validateTOTP,
 }

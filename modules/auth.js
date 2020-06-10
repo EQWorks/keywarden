@@ -3,7 +3,6 @@
  */
 const url = require('url')
 
-const bcrypt = require('bcryptjs')
 const uuidv4 = require('uuid/v4')
 const jwt = require('jsonwebtoken')
 const moment = require('moment-timezone')
@@ -11,27 +10,15 @@ const isEqual = require('lodash.isequal')
 
 const { sendMail, magicLinkHTML, magicLinkText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
-const { getOTP, saveOTP, deleteOTP } = require('./auth-otp')
+const { claimTOTP, validateTOTP } = require('./auth-otp')
 const { AuthorizationError } = require('./errors')
 
 const {
-  HASH_ROUND = 10,
-  OTP_TTL = 5 * 60 * 1000,
+  OTP_TTL = 5 * 60 * 1000, // in milliseconds
   JWT_SECRET,
   JWT_TTL: expiresIn = 90 * 24 * 60 * 60, // in seconds
+  APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2)
 } = process.env
-
-// returns TTL
-const _updateOTP = async ({ email, otp }) => {
-  const hash = bcrypt.hashSync(otp, HASH_ROUND)
-  const ttl = Number(
-    moment()
-      .add(OTP_TTL, 'ms')
-      .format('x')
-  )
-  await saveOTP(email, { hash, ttl }, ttl)
-  return ttl
-}
 
 const getUserInfo = async ({ email, product = 'atom' }) => {
   const selects = ['prefix', 'jwt_uuid', 'client', product]
@@ -47,25 +34,17 @@ const getUserInfo = async ({ email, product = 'atom' }) => {
   }
 }
 
-const _validateOTP = async ({ email, otp, reset_uuid = false, product = 'atom' }) => {
-  const userInfo = await getUserInfo({ email, product })
-  const _otp = await getOTP(email) || {}
-  const { prefix, api_access = {} } = userInfo
-  let { jwt_uuid } = userInfo
+// Trade TOTP for user access
+const redeemTOTP = async ({ email, otp, reset_uuid = false, product = 'atom' }) => {
+  let { prefix, api_access = {}, jwt_uuid } = await getUserInfo({ email, product })
 
-  // check OTP expiration
-  const now = Number(moment().format('x'))
-  if (now >= _otp.ttl || 0) {
-    throw new AuthorizationError(`Passcode has expired for ${email}`)
-  }
-
-  // validate OTP
-  if (!bcrypt.compareSync(otp, _otp.hash || '')) {
+  if (prefix === 'appreviewer' ?
+    otp !== APP_REVIEWER_OTP :
+    !validateTOTP({ otp, email, secret: JWT_SECRET, length: 6, intervalLength: OTP_TTL})
+  ) {
     throw new AuthorizationError(`Invalid passcode for ${email}`)
   }
 
-  // unset OTP from user
-  await deleteOTP(email)
   // set `jwt_uuid` if not set already
   if (reset_uuid || !jwt_uuid) {
     jwt_uuid = uuidv4()
@@ -81,25 +60,26 @@ const _resetUUID = async ({ email }) => {
   return jwt_uuid
 }
 
-// one time passcode generator, by default 6-digit
-// NOTE: at most 16-digit (or up to Math.random() implementation)
-const _genOTP = (digit = 6) => String(Math.random()).substring(2, digit + 2)
-
 // update user OTP and send it along with TTL through email
 const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
   // TODO: add logo in when email template has logo
-  let { sender, company } = rows[0] || {}
-  sender = sender || 'dev@eqworks.com'
-  company = company || 'EQ Works'
+  const { sender = 'dev@eqworks.com', company = 'EQ Works' } = rows[0] || {}
 
   const { prefix: userPrefix } = await getUserInfo({ email: user })
   
-  // generate and update user OTP, get TTL
-  const otp = (userPrefix !== 'appreviewer') ? _genOTP() : '*'.charCodeAt(0).toString(2)
-  
-  let ttl = await _updateOTP({ email: user, otp, product })
+  // set otp and ttl (in ms)
+  let otp, ttl
+  if (userPrefix === 'appreviewer') {
+    otp = APP_REVIEWER_OTP
+    ttl = Date.now() + OTP_TTL
+  } else {
+    const totp = claimTOTP({ email: user, secret: JWT_SECRET, length: 6, intervalLength: OTP_TTL})
+    otp = totp.otp
+    ttl = totp.ttl
+  }
+
   // localize TTL
   ttl = moment.tz(ttl, zone).format('LLLL z')
 
@@ -128,7 +108,7 @@ const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { 
 
 // verify user OTP and sign JWT on success
 const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = 'atom' }) => {
-  const { api_access, jwt_uuid, prefix } = await _validateOTP({
+  const { api_access, jwt_uuid, prefix } = await redeemTOTP({
     email,
     otp,
     reset_uuid,
