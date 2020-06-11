@@ -10,7 +10,7 @@ const isEqual = require('lodash.isequal')
 
 const { sendMail, magicLinkHTML, magicLinkText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
-const { claimTOTP, validateTOTP } = require('./auth-otp')
+const { claimTOTP, redeemTOTP } = require('./auth-otp')
 const { AuthorizationError } = require('./errors')
 
 const {
@@ -35,14 +35,15 @@ const getUserInfo = async ({ email, product = 'atom' }) => {
 }
 
 // Trade TOTP for user access
-const redeemTOTP = async ({ email, otp, reset_uuid = false, product = 'atom' }) => {
+const validateTOTP = async ({ email, otp, reset_uuid = false, product = 'atom' }) => {
   let { prefix, api_access = {}, jwt_uuid } = await getUserInfo({ email, product })
 
-  if (prefix === 'appreviewer' ?
-    otp !== APP_REVIEWER_OTP :
-    !validateTOTP({ otp, email, secret: JWT_SECRET, length: 6, intervalLength: OTP_TTL})
-  ) {
-    throw new AuthorizationError(`Invalid passcode for ${email}`)
+  if (prefix === 'appreviewer') {
+    if (otp !== APP_REVIEWER_OTP) {
+      throw new AuthorizationError(`Invalid passcode for ${email}`)
+    }
+  } else {
+    redeemTOTP({ otp, email, secret: JWT_SECRET, length: 6})
   }
 
   // set `jwt_uuid` if not set already
@@ -75,7 +76,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
     otp = APP_REVIEWER_OTP
     ttl = Date.now() + OTP_TTL
   } else {
-    const totp = claimTOTP({ email: user, secret: JWT_SECRET, length: 6, intervalLength: OTP_TTL})
+    const totp = await claimTOTP({ email: user, secret: JWT_SECRET, length: 6, intervalLength: OTP_TTL})
     otp = totp.otp
     ttl = totp.ttl
   }
@@ -108,7 +109,7 @@ const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { 
 
 // verify user OTP and sign JWT on success
 const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = 'atom' }) => {
-  const { api_access, jwt_uuid, prefix } = await redeemTOTP({
+  const { api_access, jwt_uuid, prefix } = await validateTOTP({
     email,
     otp,
     reset_uuid,
