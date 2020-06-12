@@ -32,13 +32,22 @@ const getUserAccess = async (token) => {
   return access
 }
 
-// eslint-disable-next-line no-unused-vars
-module.exports.handler = async ({ authorizationToken: token, methodArn: resource } = {}) => {
+// returns the stage level api resource from a method ARN
+const getAPIRootResource = (resource) => {
+  const matches = resource.match(/^arn:aws:execute-api:[^/]+\/[^/]+\//)
+  if (!matches || matches.length !== 1) {
+    throw Error('Not an API resource')
+  }
+  return `${matches[0]}*`
+}
+
+module.exports.handler = async ({ authorizationToken: token, methodArn } = {}) => {
   try {
     const access = await getUserAccess(token)
+    const resource = getAPIRootResource(methodArn)
     return generateAuthPolicy(resource, true, access)
 
   } catch (err) {
-    return generateAuthPolicy(resource)
+    return generateAuthPolicy(methodArn)
   }
 }
