@@ -86,6 +86,13 @@ const genOTP = ({ email, secret, tuk, length = 6 }) => {
 }
 
 /**
+ * Generates a TUK
+ * @param {number} [length=20] Length of the TUK string (multiple of 2)
+ * @return {string} TUK
+ */
+const genTUK = (length = 20 ) => crypto.randomBytes(Math.ceil(length / 2)).toString('hex')
+
+/**
  * Generates a OTP with a TTL in the range [minTTL, resetTTL] or no TTL (evergreen) if
  * these arguments are not supplied
  * @param {Object} [options]
@@ -98,7 +105,7 @@ const genOTP = ({ email, secret, tuk, length = 6 }) => {
  * @throws {AuthorizationError} Throws if failure
  */
 const claimOTP = async ({ email, secret, length = 6, minTTL, resetTTL }) => {
-  const set = crypto.randomBytes(10).toString('hex')
+  const set = genTUK()
   const { tuk, ttl } = await getOrSetTUK({ email, set, minTTL, resetTTL })
   const otp = genOTP({ email, secret, tuk, length })
   return { otp, ttl }

@@ -66,7 +66,9 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
   // TODO: add logo in when email template has logo
-  const { sender = 'dev@eqworks.com', company = 'EQ Works' } = rows[0] || {}
+  let { sender, company } = rows[0] || {}
+  sender = sender || 'dev@eqworks.com'
+  company = company || 'EQ Works'
 
   const { prefix: userPrefix } = await getUserInfo({ email: user })
   
