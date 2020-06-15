@@ -21,15 +21,17 @@ const {
 } = process.env
 
 const getUserInfo = async ({ email, product = 'atom' }) => {
-  const selects = ['prefix', 'jwt_uuid', 'client', product]
+  const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
   const { user } = await selectUser({ email, selects })
+  // product access (read/write) falls back to 'atom' access if empty object
+  const productAccess = Object.keys(user[product]).length ? user[product] : user.atom
   return {
     ...user,
     email,
     product,
     api_access: {
       ...user.client,
-      ...user[product],
+      ...productAccess,
     },
   }
 }
@@ -90,7 +92,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
   let link = url.parse(redirect, true)
   // inject query string params
   link.query = link.query || {}
-  Object.assign(link.query, { user, otp })
+  Object.assign(link.query, { user, otp, product })
   // hack to enable link.query over ?search
   link.search = undefined
   // reconstruct into the effective magic link
