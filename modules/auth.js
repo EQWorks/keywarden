@@ -45,7 +45,7 @@ const redeemAccess = async ({ email, otp, reset_uuid = false, product = 'atom' }
       throw new AuthorizationError(`Invalid passcode for ${email}`)
     }
   } else {
-    redeemOTP({ otp, email, secret: JWT_SECRET, length: 6})
+    await redeemOTP({ otp, email, secret: JWT_SECRET, length: 6})
   }
 
   // set `jwt_uuid` if not set already
