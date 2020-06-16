@@ -20,11 +20,12 @@ const {
   APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2)
 } = process.env
 
-const getUserInfo = async ({ email, product = 'atom' }) => {
+const getUserInfo = async ({ email, product }) => {
+  product = (product || 'atom').toLowerCase()
   const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
   const { user } = await selectUser({ email, selects })
   // product access (read/write) falls back to 'atom' access if empty object
-  const productAccess = Object.keys(user[product]).length ? user[product] : user.atom
+  const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
   return {
     ...user,
     email,
