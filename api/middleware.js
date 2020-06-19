@@ -4,8 +4,9 @@ const { sentry, AuthorizationError, APIError } = require('../modules/errors')
 // JWT confirmation middleware
 const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
   const { light, reset_uuid, product: targetProduct  = 'atom' } = req.query
-  const fields = ['email', 'api_access', 'jwt_uuid', 'product']
+  const fields = ['email', 'api_access', 'jwt_uuid']
   const token = req.get('eq-api-jwt')
+
   let user
   // preliminary jwt verify
   try {
@@ -16,10 +17,15 @@ const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
     console.error(`[ERROR] ${err.message}`, err.stack || err)
     return next(new AuthorizationError(`Invalid JWT: ${token}`))
   }
+
+  // set product to atom if missing from jwt or falsy for backward compatibility
+  user.product = user.product || 'atom'
+
   // payload fields existence check
   if (!fields.every(k => k in user)) {
     return next(new AuthorizationError('JWT missing required fields in payload'))
   }
+
   // product check
   if (targetProduct !== 'all' && user.product.toLowerCase() !== targetProduct.toLowerCase()) {
     return next(new AuthorizationError('JWT not valid for this resource'))
