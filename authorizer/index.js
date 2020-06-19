@@ -21,8 +21,11 @@ const getUserAccess = async (token) => {
   // preliminary jwt verify
   const access = verifyJWT(token)
 
+  // set product to atom if missing from jwt or falsy for backward compatibility
+  access.product = access.product || 'atom'
+
   // payload fields existence check
-  if (['email', 'api_access', 'jwt_uuid', 'product'].some(field => !(field in access))) {
+  if (['email', 'api_access', 'jwt_uuid'].some(field => !(field in access))) {
     throw Error('JWT missing required fields in payload')
   }
 
@@ -31,6 +34,21 @@ const getUserAccess = async (token) => {
 
   return access
 }
+
+// generates a generic access object with public permissions
+const genPublicAccess = (id) => ({
+  email: id,
+  prefix: 'public',
+  api_access: {
+    wl: [],
+    customers: [],
+    read : 0,
+    write : 0,
+  }
+})
+
+// confirms that token matches 'public' token pattern
+const isPublicToken = (token) => token.indexOf('public') !== -1
 
 // returns the stage level api resource from a method ARN
 const getAPIRootResource = (resource) => {
@@ -43,9 +61,16 @@ const getAPIRootResource = (resource) => {
 
 module.exports.handler = async ({ authorizationToken: token, methodArn } = {}) => {
   try {
-    const access = await getUserAccess(token)
-    const resource = getAPIRootResource(methodArn)
-    return generateAuthPolicy(resource, true, access)
+    const rootResource = getAPIRootResource(methodArn)
+
+    // let public traffic through
+    if (isPublicToken(token)) {
+      const publicAccess = genPublicAccess(token)
+      return generateAuthPolicy(rootResource, true, publicAccess)
+    }
+
+    const userAccess = await getUserAccess(token)
+    return generateAuthPolicy(rootResource, true, userAccess)
 
   } catch (err) {
     return generateAuthPolicy(methodArn)
