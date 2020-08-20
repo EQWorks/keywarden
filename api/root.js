@@ -53,18 +53,6 @@ router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
   }).catch(next)
 })
 
-// GET /exchange
-router.get('/exchange', hasQueryParams('newProduct'), confirmed({ defaultTargetProduct: 'all' }), async (req, res) => {
-  const { query: { newProduct }, userInfo: { email } } = req
-  const { prefix, api_access = {}, jwt_uuid, product } = await getUserInfo({ email, product: newProduct })
-  const token = signJWT({ email, api_access, jwt_uuid, prefix, product })
-  res.json({
-    message: `Token exchanged for user ${email}, please store and use the token responsibly.`,
-    token,
-    user: email,
-  })
-})
-
 // GET /confirm
 router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
   const { email: user, light } = req.userInfo
@@ -72,9 +60,13 @@ router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
 })
 
 // GET /refresh
-router.get('/refresh', confirmed(), (req, res) => {
-  const { email, api_access, jwt_uuid, product } = req.userInfo
-  const token = signJWT({ email, api_access, jwt_uuid, product: product.toLowerCase() })
+router.get('/refresh', confirmed(), async (req, res) => {
+  const { query: { newProduct = '' } } = req
+  const { email } = req.userInfo
+  req.userInfo = newProduct ? await getUserInfo({ email, product: newProduct.toLowerCase() }) : req.userInfo
+  const { api_access = {}, jwt_uuid, prefix, product } = req.userInfo
+  const token = signJWT({ email, api_access, jwt_uuid, prefix, product: product.toLowerCase() })
+
   return res.json({
     message: `Token refreshed for user ${email}, please store and use the token responsibly`,
     token,
