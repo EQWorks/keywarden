@@ -3,7 +3,7 @@ const { sentry, AuthorizationError, APIError } = require('../modules/errors')
 
 // JWT confirmation middleware
 const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
-  const { light, reset_uuid, product: targetProduct  = 'atom' } = req.query
+  const { light, reset_uuid, product: targetProduct = 'atom' } = req.query
   const fields = ['email', 'api_access', 'jwt_uuid']
   const token = req.get('eq-api-jwt')
 

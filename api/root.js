@@ -2,7 +2,7 @@
 const express = require('express')
 const router = express.Router()
 
-const { loginUser, signJWT, verifyOTP } = require('../modules/auth')
+const { loginUser, signJWT, verifyOTP, getUserInfo } = require('../modules/auth')
 const { fullCheck } = require('../modules/access')
 const { confirmed, hasQueryParams } = require('./middleware')
 
@@ -60,9 +60,13 @@ router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
 })
 
 // GET /refresh
-router.get('/refresh', confirmed(), (req, res) => {
-  const { email, api_access, jwt_uuid, product } = req.userInfo
-  const token = signJWT({ email, api_access, jwt_uuid, product: product.toLowerCase() })
+router.get('/refresh', confirmed(), async (req, res) => {
+  const { query: { newProduct = '' } } = req
+  const { email } = req.userInfo
+  req.userInfo = newProduct ? await getUserInfo({ email, product: newProduct.toLowerCase() }) : req.userInfo
+  const { api_access = {}, jwt_uuid, prefix, product } = req.userInfo
+  const token = signJWT({ email, api_access, jwt_uuid, prefix, product: product.toLowerCase() })
+
   return res.json({
     message: `Token refreshed for user ${email}, please store and use the token responsibly`,
     token,
