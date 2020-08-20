@@ -2,7 +2,7 @@
 const express = require('express')
 const router = express.Router()
 
-const { loginUser, signJWT, verifyOTP } = require('../modules/auth')
+const { loginUser, signJWT, verifyOTP, getUserInfo } = require('../modules/auth')
 const { fullCheck } = require('../modules/access')
 const { confirmed, hasQueryParams } = require('./middleware')
 
@@ -51,6 +51,18 @@ router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
       token,
     })
   }).catch(next)
+})
+
+// GET /exchange
+router.get('/exchange', hasQueryParams('newProduct'), confirmed({ defaultTargetProduct: 'all' }), async (req, res) => {
+  const { query: { newProduct }, userInfo: { email } } = req
+  const { prefix, api_access = {}, jwt_uuid, product } = await getUserInfo({ email, product: newProduct })
+  const token = signJWT({ email, api_access, jwt_uuid, prefix, product })
+  res.json({
+    message: `Token exchanged for user ${email}, please store and use the token responsibly.`,
+    token,
+    user: email,
+  })
 })
 
 // GET /confirm
