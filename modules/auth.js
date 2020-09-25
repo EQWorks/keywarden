@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken')
 const moment = require('moment-timezone')
 const isEqual = require('lodash.isequal')
 
-const { sendMail, magicLinkHTML, magicLinkText } = require('./email.js')
+const { sendMail, magicLinkHTML, otpText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
 const { AuthorizationError } = require('./errors')
@@ -65,7 +65,7 @@ const _resetUUID = async ({ email }) => {
 }
 
 // update user OTP and send it along with TTL through email
-const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
+const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
   // TODO: add logo in when email template has logo
@@ -74,7 +74,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
   company = company || 'EQ Works'
 
   const { prefix: userPrefix } = await getUserInfo({ email: user })
-  
+
   // set otp and ttl (in ms)
   let otp, ttl
   if (userPrefix === 'appreviewer') {
@@ -100,14 +100,18 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM' }) => {
   link = url.format(link)
 
   // populate email
-  const message = {
+  const message = nolink ? {
+    text: otpText({ otp, ttl, company, product }),
+  } : {
+    text: otpText({ link, otp, ttl, company, product }),
+    html: magicLinkHTML({ link, otp, ttl, company, product }),
+  }
+  return sendMail({
     from: sender,
     to: user,
     subject: `${product} (${company}) Login`,
-    text: magicLinkText({ link, otp, ttl, company, product }),
-    html: magicLinkHTML({ link, otp, ttl, company, product }),
-  }
-  return sendMail(message)
+    ...message,
+  })
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn })

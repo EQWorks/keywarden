@@ -1,11 +1,11 @@
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
 
-const sendMail = message => nodemailer.createTransport({
+module.exports.sendMail = message => nodemailer.createTransport({
   SES: new AWS.SES(),
 }).sendMail(message)
 
-const magicLinkHTML = ({ link, otp, ttl, company, product }) => `
+module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
   <!DOCTYPE html>
   <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
   <head>
@@ -298,15 +298,9 @@ const magicLinkHTML = ({ link, otp, ttl, company, product }) => `
   </html>
 `
 
-const magicLinkText = ({ link, otp, ttl, company, product }) => `
+module.exports.otpText = ({ link, otp, ttl, company, product }) => `
   Welcome to ${product} (${company})\n
-  Please login with the magic link ${link}\n
+  ${link ? `Please login with the magic link ${link}\n` : ''}
   ${otp && ttl ? `Or manually enter: ${otp} \n
   This will expire after ${ttl}, and all previous email should be discarded.` : ''}
 `
-
-module.exports = {
-  magicLinkHTML,
-  magicLinkText,
-  sendMail,
-}
