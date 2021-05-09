@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.equsers (
     email TEXT NOT NULL,
-    prefix TEXT,
+    prefix TEXT NOT NULL,
     jwt_uuid TEXT,
     client JSONB DEFAULT '{}'::JSONB,
     atom JSONB DEFAULT '{}'::JSONB,
