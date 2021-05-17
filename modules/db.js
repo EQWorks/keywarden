@@ -18,6 +18,7 @@ const _checkEmpty = ({ ...params }) => {
 }
 
 const selectUser = async ({ email, selects, conditions=[] }) => {
+  // returns user data, or undefined if user not found
   _checkEmpty({ email })
   const { rows=[] } = await rPool.query(`
     SELECT ${selects.join(',')}
@@ -26,8 +27,8 @@ const selectUser = async ({ email, selects, conditions=[] }) => {
       ${isEmpty(conditions) ? '' : `AND ${conditions.join(' AND ')}`}
     LIMIT 1;
   `, [email])
-  const user = rows[0] || {}
-  return { user }
+  const user = rows[0]
+  return user
 }
 
 const listUsers = async ({ selects, conditions }) => {

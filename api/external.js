@@ -13,7 +13,7 @@ router.get('/readme', (req, res, next) => {
   let { email, user } = req.query
   email = email || user
   const selects = ['prefix', 'client']
-  selectUser({ email, selects }).then(({ user: { client, prefix } }) => {
+  selectUser({ email, selects }).then(({ client, prefix }) => {
     if (!client) {
       return res.sendStatus(403)
     }
