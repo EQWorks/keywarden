@@ -30,7 +30,14 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     zone: decodeURIComponent(zone || 'utc'),
     product,
     nolink
-  }).then(() => {
+  }).then((userExists) => {
+    if(!userExists){
+      res.status(401)
+      return res.json({
+        message: `User '${user}' not found`,
+        user,
+      })
+    }
     return res.json({
       message: `Login passcode sent to ${user} through email`,
       user,

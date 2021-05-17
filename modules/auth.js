@@ -21,11 +21,17 @@ const {
 } = process.env
 
 const getUserInfo = async ({ email, product }) => {
+  // returns user info, or false if user does not exist
+
   product = (product || 'atom').toLowerCase()
   const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
   const { user } = await selectUser({ email, selects })
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
+  
+  if(Object.keys(user) == 0)
+    return false;
+
   return {
     ...user,
     email,
@@ -65,15 +71,21 @@ const _resetUUID = async ({ email }) => {
 }
 
 // update user OTP and send it along with TTL through email
+// return true on success
 const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
+
   // TODO: add logo in when email template has logo
   let { sender, company } = rows[0] || {}
   sender = sender || 'dev@eqworks.com'
   company = company || 'EQ Works'
 
-  const { prefix: userPrefix } = await getUserInfo({ email: user })
+  let userInfo = await getUserInfo({ email: user })
+  if(!userInfo)
+    return false;
+
+  const { prefix: userPrefix } = userInfo
 
   // set otp and ttl (in ms)
   let otp, ttl
@@ -106,12 +118,14 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     text: otpText({ link, otp, ttl, company, product }),
     html: magicLinkHTML({ link, otp, ttl, company, product }),
   }
-  return sendMail({
+  await sendMail({
     from: sender,
     to: user,
     subject: `${product} (${company}) Login`,
     ...message,
   })
+
+  return true;
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
