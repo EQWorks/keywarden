@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      STAGE: prod # also must have matching Portunus project/stage
+
     steps:
       - uses: actions/checkout@v1
 
@@ -35,27 +38,36 @@ jobs:
             ${{ runner.OS }}-build-
             ${{ runner.OS }}-
 
-      - run: npm install -g serverless @eqworks/notify
+      - run: npm install -g serverless
       - run: yarn install
 
-      - run: echo "PORTUNUS_TOKEN=$PORTUNUS_TOKEN" > .env && yarn deploy --stage prod
+      - name: Deploy through serverless
+        run: |
+          echo "PORTUNUS_TOKEN=${{ secrets.PORTUNUS_TOKEN_JWT }}/${GITHUB_REPOSITORY##*/}/${STAGE}" > .env
+          yarn deploy --stage ${STAGE}
         env:
           # aws creds for deployment
-          AWS_ACCESS_KEY_ID: ${{secrets.aws_access_key_id}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.aws_secret_access_key}}
-          # stage specific PORTUNUS_TOKEN
-          PORTUNUS_TOKEN: ${{ secrets.PORTUNUS_TOKEN_JWT }}/8/prod
-          # app env vars that are constant/special
-          KEYWARDEN_VER: ${{github.sha}}
+          AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
+          # keywarden API version, passthrough
+          KEYWARDEN_VER: ${{ github.sha }}
 
-      - name: Notify on deployment success
-        if: success()
-        run: notify deployment $GITHUB_REPOSITORY --commit=$GITHUB_SHA --stage=prod
+      - name: Notify on deployment status
+        if: ${{ always() }}
+        run: npx @eqworks/notify deployment ${GITHUB_REPOSITORY} --commit=${GITHUB_SHA} --stage=${STAGE} --status=${JOB_STATUS}
         env:
-          SLACK_HOOK: ${{secrets.SLACK_HOOK}}
+          SLACK_HOOK: ${{ secrets.CD_SLACK_HOOK }}
+          JOB_STATUS: ${{ job.status }}
 
-      - name: Notify on deployment failure
-        if: failure()
-        run: notify deployment $GITHUB_REPOSITORY --commit=$GITHUB_SHA --stage=prod --success=false
+      - name: Generate tag associated release notes
+        run: npx @eqworks/release notes -v --pattern="prod-*" --head ${GITHUB_REF##*/} --github
         env:
-          SLACK_HOOK: ${{secrets.SLACK_HOOK}}
+          GITHUB_OWNER: EQWorks
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on release notes update
+        if: ${{ success() }}
+        run: npx @eqworks/notify send "Release notes updated for ${GITHUB_REPOSITORY} ${GITHUB_REF##*/}" --link "https://github.com/EQWorks/${GITHUB_REPOSITORY}/tag/${GITHUB_REF##*/}" --status ${JOB_STATUS}
+        env:
+          SLACK_HOOK: ${{ secrets.CD_SLACK_HOOK }}
+          JOB_STATUS: ${{ job.status }}
