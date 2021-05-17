@@ -69,8 +69,6 @@ const _resetUUID = async ({ email }) => {
 const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
-  if(!rows)
-    return rows
 
   // TODO: add logo in when email template has logo
   let { sender, company } = rows[0] || {}
@@ -78,6 +76,9 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
   company = company || 'EQ Works'
 
   const { prefix: userPrefix } = await getUserInfo({ email: user })
+
+  if(!prefix)
+    return await getUserInfo({ email: user })
 
   // set otp and ttl (in ms)
   let otp, ttl
@@ -117,7 +118,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     ...message,
   })
 
-  return rows
+  return await getUserInfo({ email: user })
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
