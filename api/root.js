@@ -40,11 +40,12 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
 
 // GET /verify
 router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
-  const { user, reset_uuid, product } = req.query
+  const { user, reset_uuid, product, timeout } = req.query
   verifyOTP({
     ...req.query,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
-    product
+    product,
+    timeout
   }).then(token => {
     return res.json({
       message: `User ${user} verified, please store and use the token responsibly`,
