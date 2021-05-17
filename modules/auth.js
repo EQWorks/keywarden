@@ -16,7 +16,7 @@ const { AuthorizationError } = require('./errors')
 const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
   JWT_SECRET,
-  JWT_TTL: expiresIn = 90 * 24 * 60 * 60, // in seconds
+  JWT_TTL = 90 * 24 * 60 * 60, // in seconds
   APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2)
 } = process.env
 
@@ -114,17 +114,34 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
   })
 }
 
-const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn })
+const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
 
 // verify user OTP and sign JWT on success
-const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = 'atom' }) => {
+const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = 'atom', timeout }) => {
   const { api_access, jwt_uuid, prefix } = await redeemAccess({
     email,
     otp,
     reset_uuid,
     product,
   })
-  return signJWT({ email, api_access, jwt_uuid, prefix, product: product.toLowerCase() })
+
+  // timeout in seconds
+  timeout = parseInt(timeout)
+  timeout = timeout >= 0 ? timeout : '9999 years' // never expire if timeout is negative
+  timeout = isPrivilegedUser(email, prefix, api_access) ? timeout : JWT_TTL
+
+  return jwt.sign(
+    { email, api_access, jwt_uuid, prefix, product: product.toLowerCase() }, 
+    JWT_SECRET,
+    { expiresIn: timeout }
+  )
+}
+
+const isPrivilegedUser = (email, prefix, api_access) => {
+  // returns true if this user is high-privilege
+  // A user is high privilege if they have an eqworks email, a dev stage prefix,
+  // and -1 access to all api_access fields
+  return Object.values(api_access).every(v => v === -1) && email.endsWith('@eqworks.com') && prefix == 'dev'
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
