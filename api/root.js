@@ -34,12 +34,12 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     if(!userExists){
       res.status(401)
       return res.json({
-        message: `User '${user}' not found`,
+        message: `User '${user}' not found, ${userExists}`,
         user,
       })
     }
     return res.json({
-      message: `Login passcode sent to ${user} through email`,
+      message: `Login passcode sent to ${user} through email, ${userExists}`,
       user,
     })
   }).catch(next)

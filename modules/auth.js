@@ -70,7 +70,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
   // get user WL info
   const { rows = [] } = await getUserWL(user)
   if(!rows)
-    return false
+    return rows
 
   // TODO: add logo in when email template has logo
   let { sender, company } = rows[0] || {}
@@ -117,7 +117,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     ...message,
   })
 
-  return true
+  return rows
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
