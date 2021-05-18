@@ -21,11 +21,17 @@ const {
 } = process.env
 
 const getUserInfo = async ({ email, product }) => {
+  // returns user info, or false if user does not exist
+
   product = (product || 'atom').toLowerCase()
   const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
   const { user } = await selectUser({ email, selects })
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
+  
+  if(Object.keys(user) == 0)
+    return false;
+
   return {
     ...user,
     email,
@@ -75,10 +81,11 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
   sender = sender || 'dev@eqworks.com'
   company = company || 'EQ Works'
 
-  const { prefix: userPrefix } = await getUserInfo({ email: user })
-  let res = await getUserInfo({ email: user })
-  if(!res)
-    return res
+  let userInfo = await getUserInfo({ email: user })
+  if(!userInfo)
+    return false;
+
+  const { prefix: userPrefix } = userInfo
 
   // set otp and ttl (in ms)
   let otp, ttl
@@ -118,7 +125,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     ...message,
   })
 
-  return res
+  return true;
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
