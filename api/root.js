@@ -31,15 +31,15 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     product,
     nolink
   }).then((userExists) => {
-    if(!userExists){
-      res.status(401)
-      return res.json({
-        message: `User '${user}' not found, ${userExists}`,
-        user,
-      })
-    }
+    // if(!userExists){
+    //   res.status(401)
+    //   return res.json({
+    //     message: `User '${user}' not found, ${userExists}`,
+    //     user,
+    //   })
+    // }
     return res.json({
-      message: `Login passcode sent to ${user} through email, ${userExists}`,
+      message: `Login passcode sent to ${user} through email, ${JSON.stringify(userExists)}`,
       user,
     })
   }).catch(next)
