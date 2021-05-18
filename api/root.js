@@ -39,7 +39,7 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     //   })
     // }
     return res.json({
-      message: `Login passcode sent to ${user} through email, ${JSON.stringify(userExists)}`,
+      message: `Login passcode sent to ${user} through email, ${userExists.api_access}`,
       user,
     })
   }).catch(next)

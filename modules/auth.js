@@ -118,7 +118,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     ...message,
   })
 
-  return await res
+  return res
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
