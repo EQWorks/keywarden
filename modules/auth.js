@@ -25,11 +25,11 @@ const getUserInfo = async ({ email, product }) => {
 
   product = (product || 'atom').toLowerCase()
   const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
-  const { user } = await selectUser({ email, selects })
+  const user = await selectUser({ email, selects })
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
   
-  if (Object.keys(user).length == 0) {
+  if (user === undefined) {
     return undefined
   }
 

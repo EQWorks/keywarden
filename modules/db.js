@@ -26,8 +26,8 @@ const selectUser = async ({ email, selects, conditions=[] }) => {
       ${isEmpty(conditions) ? '' : `AND ${conditions.join(' AND ')}`}
     LIMIT 1;
   `, [email])
-  const user = rows[0] || {}
-  return { user }
+  const user = rows[0] || undefined
+  return user
 }
 
 const listUsers = async ({ selects, conditions }) => {
