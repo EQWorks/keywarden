@@ -5,7 +5,6 @@ const router = express.Router()
 const { loginUser, signJWT, verifyOTP, getUserInfo } = require('../modules/auth')
 const { fullCheck } = require('../modules/access')
 const { confirmed, hasQueryParams } = require('./middleware')
-const { APIError } = require('../modules/errors')
 
 // GET /
 router.get('/', (_, res) => {

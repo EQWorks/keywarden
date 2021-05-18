@@ -11,7 +11,7 @@ const isEqual = require('lodash.isequal')
 const { sendMail, magicLinkHTML, otpText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
-const { AuthorizationError } = require('./errors')
+const { AuthorizationError, APIError } = require('./errors')
 
 const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
