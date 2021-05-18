@@ -84,7 +84,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
 
   const userInfo = await getUserInfo({ email: user })
   if (!userInfo) {
-    throw APIError({
+    throw new APIError({
       message: `User ${user} not found`,
       code: 404
     })
