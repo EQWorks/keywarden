@@ -29,8 +29,8 @@ const getUserInfo = async ({ email, product }) => {
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
   
-  if(Object.keys(user) == 0)
-    return false;
+  if(Object.keys(user).length == 0)
+    return false
 
   return {
     ...user,
@@ -83,7 +83,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
 
   let userInfo = await getUserInfo({ email: user })
   if(!userInfo)
-    return false;
+    return false
 
   const { prefix: userPrefix } = userInfo
 
@@ -125,7 +125,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     ...message,
   })
 
-  return true;
+  return true
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
