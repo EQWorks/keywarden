@@ -11,7 +11,7 @@ const isEqual = require('lodash.isequal')
 const { sendMail, magicLinkHTML, otpText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
-const { AuthorizationError } = require('./errors')
+const { AuthorizationError, APIError } = require('./errors')
 
 const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
@@ -21,7 +21,7 @@ const {
 } = process.env
 
 const getUserInfo = async ({ email, product }) => {
-  // returns user info, or false if user does not exist
+  // returns user info
 
   product = (product || 'atom').toLowerCase()
   const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
@@ -29,8 +29,9 @@ const getUserInfo = async ({ email, product }) => {
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
   
-  if(Object.keys(user) == 0)
-    return false;
+  if (Object.keys(user).length == 0) {
+    return undefined
+  }
 
   return {
     ...user,
@@ -81,9 +82,13 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
   sender = sender || 'dev@eqworks.com'
   company = company || 'EQ Works'
 
-  let userInfo = await getUserInfo({ email: user })
-  if(!userInfo)
-    return false;
+  const userInfo = await getUserInfo({ email: user })
+  if (!userInfo) {
+    throw new APIError({
+      message: `User ${user} not found`,
+      code: 404
+    })
+  }
 
   const { prefix: userPrefix } = userInfo
 
@@ -118,14 +123,12 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     text: otpText({ link, otp, ttl, company, product }),
     html: magicLinkHTML({ link, otp, ttl, company, product }),
   }
-  await sendMail({
+  return await sendMail({
     from: sender,
     to: user,
     subject: `${product} (${company}) Login`,
     ...message,
   })
-
-  return true;
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
