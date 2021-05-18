@@ -123,7 +123,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     text: otpText({ link, otp, ttl, company, product }),
     html: magicLinkHTML({ link, otp, ttl, company, product }),
   }
-  return await sendMail({
+  return sendMail({
     from: sender,
     to: user,
     subject: `${product} (${company}) Login`,
