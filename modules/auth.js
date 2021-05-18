@@ -76,9 +76,9 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
   company = company || 'EQ Works'
 
   const { prefix: userPrefix } = await getUserInfo({ email: user })
-
-  if(!prefix)
-    return await getUserInfo({ email: user })
+  let res = await getUserInfo({ email: user })
+  if(!res)
+    return res
 
   // set otp and ttl (in ms)
   let otp, ttl
@@ -118,7 +118,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
     ...message,
   })
 
-  return await getUserInfo({ email: user })
+  return await res
 }
 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
