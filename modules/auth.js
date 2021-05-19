@@ -30,7 +30,10 @@ const getUserInfo = async ({ email, product }) => {
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
   
   if (user === undefined) {
-    return undefined
+    throw new APIError({
+      message: `User ${user} not found`,
+      code: 404
+    })
   }
 
   return {
@@ -82,15 +85,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
   sender = sender || 'dev@eqworks.com'
   company = company || 'EQ Works'
 
-  const userInfo = await getUserInfo({ email: user })
-  if (!userInfo) {
-    throw new APIError({
-      message: `User ${user} not found`,
-      code: 404
-    })
-  }
-
-  const { prefix: userPrefix } = userInfo
+  const { prefix: userPrefix } = await getUserInfo({ email: user })
 
   // set otp and ttl (in ms)
   let otp, ttl
