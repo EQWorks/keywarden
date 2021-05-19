@@ -29,8 +29,8 @@ const getUserInfo = async ({ email, product }) => {
   
   if (!user) {
     throw new APIError({
-      message: `User ${user} not found`,
-      code: 404
+      message: `User ${email} not found`,
+      statusCode: 404
     })
   }
 

@@ -68,7 +68,7 @@ class APIError extends Error {
     return {
       message: this.message,
       statusCode: this.statusCode,
-      lopLevel: this.logLevel,
+      logLevel: this.logLevel,
     }
   }
 
