@@ -29,7 +29,7 @@ const getUserInfo = async ({ email, product }) => {
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
   
-  if (user === undefined) {
+  if (!user) {
     throw new APIError({
       message: `User ${user} not found`,
       code: 404
@@ -75,7 +75,6 @@ const _resetUUID = async ({ email }) => {
 }
 
 // update user OTP and send it along with TTL through email
-// return true on success
 const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
