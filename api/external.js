@@ -13,10 +13,12 @@ router.get('/readme', (req, res, next) => {
   let { email, user } = req.query
   email = email || user
   const selects = ['prefix', 'client']
-  selectUser({ email, selects }).then(({ client, prefix }) => {
-    if (!client) {
+  selectUser({ email, selects }).then((userInfo) => {
+    if (!userInfo) {
       return res.sendStatus(403)
     }
+    const { client, prefix } = userInfo
+
     // `isReadOnly` is used for readme.io's access control
     const user = { email, name: email, prefix, isReadOnly: true, ...client }
     const link = `https://docs.locus.place/v1.0?auth_token=${signJWT(user, README_LOCUS_SECRET)}`
