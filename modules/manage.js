@@ -9,6 +9,7 @@ const {
   deleteUser,
 } = require('./db')
 const { fullCheck } = require('./access')
+const { APIError } = require('./errors')
 
 const _prepareConditions = ({ prefix, api_access, product = 'atom' }) => {
   // derive select conditions based on prefix and api_access
