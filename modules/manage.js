@@ -52,7 +52,16 @@ const getUsers = ({ prefix, api_access, product = 'atom' }) => {
 const getUser = ({ email, prefix, api_access, product = 'atom' }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
   const selects = ['email', 'prefix', 'client', 'info', product]
-  return selectUser({ email, selects, conditions })
+  const user = selectUser({ email, selects, conditions })
+
+  if (!user) {
+    throw new APIError({
+      message: `User ${user} not found`,
+      code: 404
+    })
+  }
+
+  return user
 }
 
 const _canManage = ({ userInfo, prefix, api_access, product }) => {
