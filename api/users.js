@@ -62,7 +62,7 @@ router.put('/activate', confirmed(), (req, res, next) => {
   const { userInfo: { prefix, api_access } = {} } = req
   const { product, user: email } = req.query
   getUser({ email, prefix, api_access, product })
-    .then(({ user: userInfo }) => {
+    .then((userInfo) => {
       return activateUser({ userInfo, prefix, api_access })
     })
     .then(() => {
@@ -76,7 +76,7 @@ router.put('/deactivate', confirmed(), (req, res, next) => {
   const { userInfo: { prefix, api_access } = {} } = req
   const { product, user: email } = req.query
   getUser({ email, prefix, api_access, product })
-    .then(({ user: userInfo }) => {
+    .then((userInfo) => {
       return deactivateUser({ userInfo, prefix, api_access })
     })
     .then(() => {
@@ -90,7 +90,7 @@ router.delete('/', confirmed(), (req, res, next) => {
   const { userInfo: { prefix, api_access } = {} } = req
   const { product, user: email } = req.query
   getUser({ email, prefix, api_access, product })
-    .then(({ user: userInfo }) => {
+    .then((userInfo) => {
       return removeUser({ prefix, api_access, userInfo })
     })
     .then(() => {
