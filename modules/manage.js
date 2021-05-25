@@ -9,6 +9,7 @@ const {
   deleteUser,
 } = require('./db')
 const { fullCheck } = require('./access')
+const { APIError } = require('./errors')
 
 const _prepareConditions = ({ prefix, api_access, product = 'atom' }) => {
   // derive select conditions based on prefix and api_access
@@ -49,10 +50,19 @@ const getUsers = ({ prefix, api_access, product = 'atom' }) => {
 }
 
 // get a user by email that the given user (email) has access to
-const getUser = ({ email, prefix, api_access, product = 'atom' }) => {
+const getUser = async ({ email, prefix, api_access, product = 'atom' }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
   const selects = ['email', 'prefix', 'client', 'info', product]
-  return selectUser({ email, selects, conditions })
+  const user = await selectUser({ email, selects, conditions })
+
+  if (!user) {
+    throw new APIError({
+      message: `User ${email} not found`,
+      statusCode: 404
+    })
+  }
+
+  return user
 }
 
 const _canManage = ({ userInfo, prefix, api_access, product }) => {

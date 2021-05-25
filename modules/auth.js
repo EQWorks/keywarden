@@ -11,7 +11,7 @@ const isEqual = require('lodash.isequal')
 const { sendMail, magicLinkHTML, otpText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
-const { AuthorizationError } = require('./errors')
+const { AuthorizationError, APIError } = require('./errors')
 
 const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
@@ -21,11 +21,22 @@ const {
 } = process.env
 
 const getUserInfo = async ({ email, product }) => {
+  // returns user info
+
   product = (product || 'atom').toLowerCase()
   const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
-  const { user } = await selectUser({ email, selects })
+  const user = await selectUser({ email, selects })
+  
+  if (!user) {
+    throw new APIError({
+      message: `User ${email} not found`,
+      statusCode: 404
+    })
+  }
+
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
+
   return {
     ...user,
     email,
@@ -68,6 +79,7 @@ const _resetUUID = async ({ email }) => {
 const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
+
   // TODO: add logo in when email template has logo
   let { sender, company } = rows[0] || {}
   sender = sender || 'dev@eqworks.com'
