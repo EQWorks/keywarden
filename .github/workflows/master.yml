@@ -34,6 +34,7 @@ jobs:
 
   commit-watch:
     runs-on: ubuntu-latest
+    if: contains(github.event_name, 'pull_request')
     steps:
       - uses: actions/checkout@v2
         with:
