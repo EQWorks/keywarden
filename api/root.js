@@ -1,6 +1,7 @@
 /* / (root) */
 const express = require('express')
 const router = express.Router()
+const nodemailer = require('nodemailer')
 
 const { loginUser, signJWT, verifyOTP, getUserInfo } = require('../modules/auth')
 const { fullCheck } = require('../modules/access')
@@ -30,11 +31,21 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     zone: decodeURIComponent(zone || 'utc'),
     product,
     nolink
-  }).then(() => {
-    return res.json({
-      message: `Login passcode sent to ${user} through email`,
-      user,
-    })
+  }).then((deliveryInfo) => {
+    if (deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
+      if (process.env.STAGE == 'local') { 
+        return res.json({
+          message: `Local keywarden - OTP sent via Ethereal to ${deliveryInfo.accepted[0]}`,
+          user: deliveryInfo.accepted[0],
+          etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo)
+        })
+      }
+      return res.json({
+        message: `Login passcode sent to ${user} through email`,
+        user: deliveryInfo.accepted[0],
+      })
+    }
+    throw new Error('Something went wrong sending the passcode.')
   }).catch(next)
 })
 
