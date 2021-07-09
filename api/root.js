@@ -32,20 +32,20 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     product,
     nolink
   }).then((deliveryInfo) => {
-    if (deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
-      if (process.env.STAGE == 'local') { 
+    if (process.env.STAGE == 'local') { 
+      if (deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
         return res.json({
           message: `Local keywarden - OTP sent via Ethereal to ${deliveryInfo.accepted[0]}`,
           user: deliveryInfo.accepted[0],
           etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo)
         })
       }
-      return res.json({
-        message: `Login passcode sent to ${user} through email`,
-        user: deliveryInfo.accepted[0],
-      })
+      throw new Error('Something went wrong sending the passcode.')
     }
-    throw new Error('Something went wrong sending the passcode.')
+    return res.json({
+      message: `Login passcode sent to ${user} through email`,
+      user: deliveryInfo.accepted[0],
+    })
   }).catch(next)
 })
 
