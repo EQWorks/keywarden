@@ -44,7 +44,7 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     }
     return res.json({
       message: `Login passcode sent to ${user} through email`,
-      user: deliveryInfo.accepted[0],
+      user,
     })
   }).catch(next)
 })
