@@ -1,9 +1,30 @@
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
 
-module.exports.sendMail = message => nodemailer.createTransport({
-  SES: new AWS.SES(),
-}).sendMail(message)
+module.exports.sendMail = async message => {
+  let transport
+  // if we are in a local environment, bypass SES and bypass requested recipient in favour of ethereal.email generated accounts 
+  if (process.env.STAGE == 'local') { 
+    let testSender = await nodemailer.createTestAccount()
+    let testRecipient = await nodemailer.createTestAccount()
+    message.from = testSender.user
+    message.to = testRecipient.user
+    transport = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      auth: {
+        user: testSender.user,
+        pass: testSender.pass
+      }
+    })
+  }
+  else {
+    transport = nodemailer.createTransport({
+      SES: new AWS.SES(),
+    })
+  }
+  return transport.sendMail(message)
+}
 
 module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
   <!DOCTYPE html>
