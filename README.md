@@ -32,11 +32,13 @@ Upon receiving this, the requesting client should make `GET /verify` request on 
 
 ### Verify OTP
 
-`GET /verify?user=<REQUIRED: email>&otp=<REQUIRED: one-time passcode>&reset_uuid=[OPTIONAL: 1|true]&product=[OPTIONAL: atom|locus]`
+`GET /verify?user=<REQUIRED: email>&otp=<REQUIRED: one-time passcode>&reset_uuid=[OPTIONAL: 1|true]&product=[OPTIONAL: atom|locus]&timeout=[OPTIONAL: Number]`
 
 Upon receiving and validating the OTP obtained from the `/login` process, instead of having the requesting application to generate and maintain a "session", `keywarden` signs a stateless [JWT (JSON web token)](https://jwt.io) for the requesting product (default: 'atom') to use for further API access against `overseer` and alike.
 
 If `reset_uuid` is supplied as a value of `1` or `true`, given `user`'s `jwt_uuid` will be reset to a new value. This can be used to effectively invalidate all past tokens of given `user`.
+
+If 'timeout' is undefined, then the generated JWT token will be set to expire in \<JWT_TTL\> seconds (90 days if this env var is undefined). Otherwise, if 'timeout' is defined and the caller is a privileged user, then the token will expire in 'timeout' seconds. Finally, if 'timeout' is negative and the caller is a privileged user, then the JWT token will be set to never expire. A privileged user is a user with either a 'mobilesdk' prefix, or a 'dev' prefix with full api access permissions and an @eqworks.com email address.
 
 ### Confirm JWT 
 

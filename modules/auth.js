@@ -153,7 +153,9 @@ const isPrivilegedUser = (email, prefix, api_access) => {
   // returns true if this user is high-privilege
   // A user is high privilege if they have an eqworks email, a dev stage prefix,
   // and -1 access to all api_access fields
-  return Object.values(api_access).every(v => v === -1) && email.endsWith('@eqworks.com') && prefix == 'dev'
+  const isDev = Object.values(api_access).every(v => v === -1) && email.endsWith('@eqworks.com') && prefix == 'dev'
+  const isMobileSDK = prefix == 'mobilesdk'
+  return isDev || isMobileSDK
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
