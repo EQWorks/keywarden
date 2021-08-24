@@ -13,12 +13,29 @@ const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
 const { AuthorizationError, APIError } = require('./errors')
 
+
 const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
   JWT_SECRET,
   JWT_TTL = 90 * 24 * 60 * 60, // in seconds
   APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2)
 } = process.env
+
+const isPrivilegedUser = (email, prefix, api_access) => {
+  // returns true if this user is high-privilege
+  // A user is high privilege if
+  // - they have an eqworks email, a 'dev' prefix,
+  //   and -1 access to all api_access fields;
+  // - or a 'mobilesdk' prefix
+  switch(prefix) {
+  case 'dev':
+    return Object.values(api_access).every(v => v === -1) &&  email.endsWith('@eqworks.com')
+  case 'mobilesdk':
+    return true
+  default:
+    return false
+  }
+}
 
 const getUserInfo = async ({ email, product }) => {
   // returns user info
@@ -138,24 +155,18 @@ const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = 'atom
   })
 
   // timeout in seconds
-  timeout = parseInt(timeout)
-  timeout = timeout >= 0 ? timeout : '9999 years' // never expire if timeout is negative
-  timeout = isPrivilegedUser(email, prefix, api_access) ? timeout : JWT_TTL
+  let expiresIn
+  if (timeout && isPrivilegedUser(email, prefix, api_access)) {
+    expiresIn = timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
+  } else {
+    expiresIn = JWT_TTL
+  }
 
   return jwt.sign(
     { email, api_access, jwt_uuid, prefix, product: product.toLowerCase() }, 
     JWT_SECRET,
-    { expiresIn: timeout }
+    { expiresIn }
   )
-}
-
-const isPrivilegedUser = (email, prefix, api_access) => {
-  // returns true if this user is high-privilege
-  // A user is high privilege if they have an eqworks email, a dev stage prefix,
-  // and -1 access to all api_access fields
-  const isDev = Object.values(api_access).every(v => v === -1) && email.endsWith('@eqworks.com') && prefix == 'dev'
-  const isMobileSDK = prefix == 'mobilesdk'
-  return isDev || isMobileSDK
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
@@ -182,4 +193,5 @@ module.exports = {
   verifyJWT,
   confirmUser,
   getUserInfo,
+  isPrivilegedUser,
 }

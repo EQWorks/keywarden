@@ -1,4 +1,4 @@
-const { verifyJWT, confirmUser } = require('../modules/auth')
+const { verifyJWT, confirmUser, isPrivilegedUser } = require('../modules/auth')
 
 // Helper function to generate an IAM policy
 const generateAuthPolicy = (resource, proceed = false, access = {}) => {
@@ -29,7 +29,13 @@ const getUserAccess = async (token) => {
     throw Error('JWT missing required fields in payload')
   }
 
-  // check that accesses and uuid have not vhangd for user
+  // light check for privileged users
+  const { email, prefix, api_access } = access
+  if (isPrivilegedUser(email, prefix, api_access)) {
+    return access
+  }
+
+  // check that accesses and uuid have not changed for user
   await confirmUser(access)
 
   return access
