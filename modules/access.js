@@ -1,4 +1,6 @@
+const { PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL, PREFIX_DEV } = require('../constants')
 const { AuthorizationError } = require('./errors')
+
 
 const checkAccess = ({ targetAccess, access, name }) => {
   const pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
@@ -14,19 +16,25 @@ const checkPrefix = ({ targetPrefix, prefix }) => {
     return
   }
   let pass
-  if (prefix === 'wl') {
-    pass = ['wl', 'customers'].includes(targetPrefix)
-  } else if (prefix === 'customers') {
-    pass = targetPrefix === 'customers'
-  } else if (prefix === 'internal') {
-    pass = ['wl', 'customers', 'internal'].includes(targetPrefix)
-  } else {
-    pass = prefix === 'dev'
+  switch(prefix) {
+  case PREFIX_WL:
+    pass = [PREFIX_WL, PREFIX_CUSTOMERS].includes(targetPrefix)
+    break
+  case PREFIX_CUSTOMERS:
+    pass = targetPrefix === PREFIX_CUSTOMERS
+    break
+  case PREFIX_INTERNAL:
+    pass = [PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL].includes(targetPrefix)
+    break
+  case PREFIX_DEV:
+    pass = true
+    break
+  default:
+    pass = false
   }
-  if (pass) {
-    return
+  if (!pass) {
+    throw new AuthorizationError('Prefix check failed')
   }
-  throw new AuthorizationError('Prefix check failed')
 }
 
 const checkClient = ({ targetClient, client, name }) => {

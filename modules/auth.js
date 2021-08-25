@@ -12,6 +12,7 @@ const { sendMail, magicLinkHTML, otpText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
 const { AuthorizationError, APIError } = require('./errors')
+const { PREFIX_APP_REVIEWER, PREFIX_DEV, PREFIX_MOBILE_SDK, PRODUCT_ATOM, PRODUCT_LOCUS } = require('../constants.js')
 
 
 const {
@@ -28,9 +29,9 @@ const isPrivilegedUser = (email, prefix, api_access) => {
   //   and -1 access to all api_access fields;
   // - or a 'mobilesdk' prefix
   switch(prefix) {
-  case 'dev':
-    return Object.values(api_access).every(v => v === -1) &&  email.endsWith('@eqworks.com')
-  case 'mobilesdk':
+  case PREFIX_DEV:
+    return Object.values(api_access).every(v => v === -1) && email.endsWith('@eqworks.com')
+  case PREFIX_MOBILE_SDK:
     return true
   default:
     return false
@@ -39,9 +40,8 @@ const isPrivilegedUser = (email, prefix, api_access) => {
 
 const getUserInfo = async ({ email, product }) => {
   // returns user info
-
-  product = (product || 'atom').toLowerCase()
-  const selects = ['prefix', 'jwt_uuid', 'client', 'atom', 'locus']
+  product = (product || '').toLowerCase() || PRODUCT_ATOM
+  const selects = ['prefix', 'jwt_uuid', 'client', PRODUCT_ATOM, PRODUCT_LOCUS]
   const user = await selectUser({ email, selects })
   
   if (!user) {
@@ -52,7 +52,7 @@ const getUserInfo = async ({ email, product }) => {
   }
 
   // product access (read/write) falls back to 'atom' access if empty object
-  const productAccess = Object.keys(user[product] || {}).length ? user[product] : user.atom
+  const productAccess = Object.keys(user[product] || {}).length ? user[product] : user[PRODUCT_ATOM]
 
   return {
     ...user,
@@ -66,10 +66,10 @@ const getUserInfo = async ({ email, product }) => {
 }
 
 // Trade OTP for user access
-const redeemAccess = async ({ email, otp, reset_uuid = false, product = 'atom' }) => {
+const redeemAccess = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM }) => {
   let { prefix, api_access = {}, jwt_uuid } = await getUserInfo({ email, product })
 
-  if (prefix === 'appreviewer') {
+  if (prefix === PREFIX_APP_REVIEWER) {
     if (otp !== APP_REVIEWER_OTP) {
       throw new AuthorizationError(`Invalid passcode for ${email}`)
     }
@@ -93,7 +93,7 @@ const _resetUUID = async ({ email }) => {
 }
 
 // update user OTP and send it along with TTL through email
-const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink }) => {
+const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, nolink }) => {
   // get user WL info
   const { rows = [] } = await getUserWL(user)
 
@@ -106,7 +106,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
 
   // set otp and ttl (in ms)
   let otp, ttl
-  if (userPrefix === 'appreviewer') {
+  if (userPrefix === PREFIX_APP_REVIEWER) {
     otp = APP_REVIEWER_OTP
     ttl = Date.now() + OTP_TTL
   } else {
@@ -146,7 +146,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = 'ATOM', nolink 
 const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
 
 // verify user OTP and sign JWT on success
-const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = 'atom', timeout }) => {
+const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout }) => {
   const { api_access, jwt_uuid, prefix } = await redeemAccess({
     email,
     otp,

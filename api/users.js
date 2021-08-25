@@ -1,7 +1,7 @@
 /* /users */
 const express = require('express')
-const router = express.Router()
 
+const { PRODUCT_ATOM } = require('../constants')
 const {
   getUsers,
   getUser,
@@ -12,6 +12,9 @@ const {
   activateUser,
 } = require('../modules/manage')
 const { confirmed, hasQueryParams } = require('./middleware')
+
+
+const router = express.Router()
 
 // GET /users
 router.get('/', hasQueryParams('user'), confirmed(), (req, res, next) => {
@@ -36,7 +39,7 @@ router.get('/list', confirmed(), (req, res, next) => {
 // POST /users (for creation)
 router.post('/', hasQueryParams('user'), confirmed(), (req, res, next) => {
   const { userInfo: { prefix, api_access } = {} } = req
-  const { user, product = 'atom' } = req.query
+  const { user, product = PRODUCT_ATOM } = req.query
   const userInfo = { ...(req.body || {}), email: user }
   createUser({ userInfo, prefix, api_access, product })
     .then(() => {
@@ -48,7 +51,7 @@ router.post('/', hasQueryParams('user'), confirmed(), (req, res, next) => {
 // PUT /users (for update)
 router.put('/', hasQueryParams('user'), confirmed(), (req, res, next) => {
   const { userInfo: { prefix, api_access } = {} } = req
-  const { user, product = 'atom' } = req.query
+  const { user, product = PRODUCT_ATOM } = req.query
   const userInfo = { ...(req.body || {}), email: user }
   editUser({ userInfo, prefix, api_access, product })
     .then(() => {

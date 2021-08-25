@@ -1,9 +1,11 @@
 const { verifyJWT, confirmUser } = require('../modules/auth')
+const { PRODUCT_ATOM } = require('../constants')
 const { sentry, AuthorizationError, APIError } = require('../modules/errors')
+
 
 // JWT confirmation middleware
 const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
-  const { light, reset_uuid, product: targetProduct = 'atom' } = req.query
+  const { light, reset_uuid, product: targetProduct = PRODUCT_ATOM } = req.query
   const fields = ['email', 'api_access', 'jwt_uuid']
   const token = req.get('eq-api-jwt')
 
@@ -19,7 +21,7 @@ const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
   }
 
   // set product to atom if missing from jwt or falsy for backward compatibility
-  user.product = user.product || 'atom'
+  user.product = user.product || PRODUCT_ATOM
 
   // payload fields existence check
   if (!fields.every(k => k in user)) {

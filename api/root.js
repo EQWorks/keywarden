@@ -1,11 +1,14 @@
 /* / (root) */
 const express = require('express')
-const router = express.Router()
 const nodemailer = require('nodemailer')
 
 const { loginUser, signJWT, verifyOTP, getUserInfo } = require('../modules/auth')
 const { fullCheck } = require('../modules/access')
 const { confirmed, hasQueryParams } = require('./middleware')
+const { PRODUCT_ATOM } = require('../constants')
+
+
+const router = express.Router()
 
 // GET /
 router.get('/', (_, res) => {
@@ -18,7 +21,7 @@ router.get('/', (_, res) => {
 
 // GET /login
 router.get('/login', hasQueryParams('user'), (req, res, next) => {
-  const { user, redirect, zone, product = 'atom', nolink } = req.query
+  const { user, redirect, zone, product = PRODUCT_ATOM, nolink } = req.query
   const { STAGE = 'dev' } = process.env
   let origin = `${req.protocol}://${req.get('host')}`
   if (STAGE) {

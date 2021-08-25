@@ -10,12 +10,14 @@ const {
 } = require('./db')
 const { fullCheck } = require('./access')
 const { APIError } = require('./errors')
+const { PREFIX_WL, PREFIX_CUSTOMERS, PRODUCT_ATOM } = require('../constants')
 
-const _prepareConditions = ({ prefix, api_access, product = 'atom' }) => {
+
+const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
   // derive select conditions based on prefix and api_access
   const { wl = [], customers = [], read = 0, write = 0 } = api_access
   const conditions = []
-  if (prefix === 'wl') {
+  if (prefix === PREFIX_WL) {
     if (wl !== -1) {
       conditions.push(`client->'wl' <@ '${JSON.stringify(wl)}'::jsonb`)
     }
@@ -27,7 +29,7 @@ const _prepareConditions = ({ prefix, api_access, product = 'atom' }) => {
       )
       OR prefix = 'customers'
     )`)
-  } else if (prefix === 'customers') {
+  } else if (prefix === PREFIX_CUSTOMERS) {
     if (customers !== -1) {
       conditions.push(
         `client->'customers' <@ '${JSON.stringify(customers)}'::jsonb`
@@ -43,14 +45,14 @@ const _prepareConditions = ({ prefix, api_access, product = 'atom' }) => {
 }
 
 // list users that the given user (email) has access to
-const getUsers = ({ prefix, api_access, product = 'atom' }) => {
+const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
   const selects = ['email', 'prefix', 'client', 'info', product]
   return listUsers({ selects, conditions })
 }
 
 // get a user by email that the given user (email) has access to
-const getUser = async ({ email, prefix, api_access, product = 'atom' }) => {
+const getUser = async ({ email, prefix, api_access, product = PRODUCT_ATOM }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
   const selects = ['email', 'prefix', 'client', 'info', product]
   const user = await selectUser({ email, selects, conditions })
@@ -89,12 +91,12 @@ const _canManage = ({ userInfo, prefix, api_access, product }) => {
 }
 
 // create a user
-const createUser = ({ userInfo, prefix, api_access, product = 'atom' }) => {
+const createUser = ({ userInfo, prefix, api_access, product = PRODUCT_ATOM }) => {
   _canManage({ userInfo, prefix, api_access, product })
   return insertUser(userInfo)
 }
 
-const editUser = ({ userInfo, prefix, api_access, product = 'atom' }) => {
+const editUser = ({ userInfo, prefix, api_access, product = PRODUCT_ATOM }) => {
   _canManage({ userInfo, prefix, api_access, product })
   return updateUser(userInfo)
 }
