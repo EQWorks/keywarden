@@ -1,11 +1,14 @@
 /* / (root) */
 const express = require('express')
-const router = express.Router()
 const nodemailer = require('nodemailer')
 
 const { loginUser, signJWT, verifyOTP, getUserInfo } = require('../modules/auth')
 const { fullCheck } = require('../modules/access')
 const { confirmed, hasQueryParams } = require('./middleware')
+const { PRODUCT_ATOM } = require('../constants')
+
+
+const router = express.Router()
 
 // GET /
 router.get('/', (_, res) => {
@@ -18,7 +21,7 @@ router.get('/', (_, res) => {
 
 // GET /login
 router.get('/login', hasQueryParams('user'), (req, res, next) => {
-  const { user, redirect, zone, product = 'atom', nolink } = req.query
+  const { user, redirect, zone, product = PRODUCT_ATOM, nolink } = req.query
   const { STAGE = 'dev' } = process.env
   let origin = `${req.protocol}://${req.get('host')}`
   if (STAGE) {
@@ -32,7 +35,7 @@ router.get('/login', hasQueryParams('user'), (req, res, next) => {
     product,
     nolink
   }).then((deliveryInfo) => {
-    if (process.env.STAGE == 'local') { 
+    if (process.env.STAGE === 'local') { 
       if (deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
         return res.json({
           message: `Local keywarden - OTP sent via Ethereal to ${deliveryInfo.accepted[0]}`,
@@ -56,7 +59,7 @@ router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
     ...req.query,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
     product,
-    timeout
+    timeout: parseInt(timeout),
   }).then(token => {
     return res.json({
       message: `User ${user} verified, please store and use the token responsibly`,

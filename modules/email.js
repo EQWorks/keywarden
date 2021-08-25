@@ -1,10 +1,11 @@
 const nodemailer = require('nodemailer')
 const AWS = require('aws-sdk')
 
+
 module.exports.sendMail = async message => {
   let transport
   // if we are in a local environment, bypass SES and bypass requested recipient in favour of ethereal.email generated accounts 
-  if (process.env.STAGE == 'local') { 
+  if (process.env.STAGE === 'local') { 
     let testSender = await nodemailer.createTestAccount()
     let testRecipient = await nodemailer.createTestAccount()
     message.from = testSender.user
@@ -227,7 +228,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
 
       <!-- Visually Hidden Preheader Text : BEGIN -->
       <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
-        ${product} (${company}) Login Magic Link
+        ${product.toUpperCase()} (${company}) Login Magic Link
       </div>
       <!-- Visually Hidden Preheader Text : END -->
 
@@ -258,7 +259,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="padding: 10px; font-family: sans-serif; font-size: 15px; line-height: 20px; color: #555555; text-align: center;">
-                    <h1 style="margin: 0 0 10px 0; font-family: sans-serif; font-size: 25px; line-height: 30px; color: #333333; font-weight: normal;">Welcome to ${product} (${company})</h1>
+                    <h1 style="margin: 0 0 10px 0; font-family: sans-serif; font-size: 25px; line-height: 30px; color: #333333; font-weight: normal;">Welcome to ${product.toUpperCase()} (${company})</h1>
                   </td>
                 </tr>
                 <tr>
@@ -297,7 +298,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
           <tr>
             <td style="padding: 5px; font-family: sans-serif; font-size: 12px; line-height: 15px; text-align: center; color: #888888;">
               <hr>
-              <p>Having an issue? <a style="color: #6BA4F8;" href="mailto:dev@eqworks.com?subject=${product} (${company}) Login issue">Contact Us</a></p>
+              <p>Having an issue? <a style="color: #6BA4F8;" href="mailto:dev@eqworks.com?subject=${product.toUpperCase()} (${company}) Login issue">Contact Us</a></p>
             </td>
           </tr>
         </table>
@@ -320,7 +321,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
 `
 
 module.exports.otpText = ({ link, otp, ttl, company, product }) => `
-  Welcome to ${product} (${company})\n
+  Welcome to ${product.toUpperCase()} (${company})\n
   ${link ? `Please login with the magic link ${link}\n` : ''}
   ${otp && ttl ? `Or manually enter: ${otp} \n
   This will expire after ${ttl}, and all previous email should be discarded.` : ''}

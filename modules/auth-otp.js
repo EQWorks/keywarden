@@ -63,7 +63,7 @@ const getTUK = async (email) => {
  */
 const clearTUK = async (email) => {
   const deleted = await redisClient.del(`keywarden-otp-${email}`)
-  return deleted == 1
+  return deleted === 1
 }
 
 /**

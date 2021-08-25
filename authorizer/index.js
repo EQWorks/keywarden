@@ -1,4 +1,6 @@
 const { verifyJWT, confirmUser } = require('../modules/auth')
+const { PREFIX_MOBILE_SDK, PREFIX_PUBLIC, PRODUCT_ATOM } = require('../constants')
+
 
 // Helper function to generate an IAM policy
 const generateAuthPolicy = (resource, proceed = false, access = {}) => {
@@ -22,14 +24,19 @@ const getUserAccess = async (token) => {
   const access = verifyJWT(token)
 
   // set product to atom if missing from jwt or falsy for backward compatibility
-  access.product = access.product || 'atom'
+  access.product = access.product || PRODUCT_ATOM
 
   // payload fields existence check
   if (['email', 'api_access', 'jwt_uuid'].some(field => !(field in access))) {
     throw Error('JWT missing required fields in payload')
   }
 
-  // check that accesses and uuid have not vhangd for user
+  // light check for mobile SDK
+  if (access.prefix === PREFIX_MOBILE_SDK) {
+    return access
+  }
+
+  // check that accesses and uuid have not changed for user
   await confirmUser(access)
 
   return access
@@ -38,7 +45,7 @@ const getUserAccess = async (token) => {
 // generates a generic access object with public permissions
 const genPublicAccess = (id) => ({
   email: id,
-  prefix: 'public',
+  prefix: PREFIX_PUBLIC,
   api_access: {
     wl: [],
     customers: [],
