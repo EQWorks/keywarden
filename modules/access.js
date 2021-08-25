@@ -1,4 +1,4 @@
-const { PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL, PREFIX_DEV } = require('../constants')
+const { PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL, PREFIX_DEV, PREFIX_TESTER } = require('../constants')
 const { AuthorizationError } = require('./errors')
 
 
@@ -24,7 +24,7 @@ const checkPrefix = ({ targetPrefix, prefix }) => {
     pass = targetPrefix === PREFIX_CUSTOMERS
     break
   case PREFIX_INTERNAL:
-    pass = [PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL].includes(targetPrefix)
+    pass = [PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL, PREFIX_TESTER].includes(targetPrefix)
     break
   case PREFIX_DEV:
     pass = true
