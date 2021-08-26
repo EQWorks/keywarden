@@ -71,8 +71,14 @@ router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
 
 // GET /confirm
 router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
-  const { email: user, light } = req.userInfo
-  return res.json({ message: `Token confirmed for user ${user}`, user, light })
+  const { query: { product }, ttl, userInfo: { email: user, light } } = req
+  return res.json({
+    message: `Token confirmed for user ${user}`,
+    user,
+    light,
+    product,
+    ttl,
+  })
 })
 
 // GET /refresh

@@ -1,6 +1,7 @@
 const { verifyJWT, confirmUser } = require('../modules/auth')
 const { PRODUCT_ATOM } = require('../constants')
 const { sentry, AuthorizationError, APIError } = require('../modules/errors')
+const moment = require('moment-timezone')
 
 
 // JWT confirmation middleware
@@ -38,6 +39,16 @@ const confirmed = ({ allowLight = false } = {}) => (req, res, next) => {
     req.userInfo = { ...user, light: true }
     return next()
   }
+
+  // determine JWT TTL
+  const ttl = 'exp' in user
+    ? 1000 * user.exp - Date.now()
+    : -1
+  req.ttl = {
+    millis: ttl,
+    friendly: moment.duration(ttl).humanize()
+  }
+
   confirmUser({
     ...user,
     reset_uuid: ['1', 'true'].includes(reset_uuid),
