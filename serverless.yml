@@ -12,7 +12,6 @@ custom:
     - X-Api-Key
     - X-Amz-Security-Token
     - X-Amz-User-Agent
-    - eq-api-user
     - eq-api-jwt
   customDomain:
     domainName: 'auth.eqworks.io'
