@@ -26,6 +26,7 @@ provider:
   runtime: nodejs12.x
   timeout: 29
   memorySize: 256
+  versionFunctions: false
   environment:
     JWT_SECRET: ${env:JWT_SECRET}
     README_LOCUS_SECRET: ${env:README_LOCUS_SECRET}
