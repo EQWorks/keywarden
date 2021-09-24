@@ -5,7 +5,8 @@ const nodemailer = require('nodemailer')
 const { loginUser, signJWT, verifyOTP, getUserInfo } = require('../modules/auth')
 const { fullCheck } = require('../modules/access')
 const { confirmed, hasQueryParams } = require('./middleware')
-const { PRODUCT_ATOM } = require('../constants')
+const { PRODUCT_ATOM, PREFIX_MOBILE_SDK } = require('../constants')
+const { APIError, InternalServerError } = require('../modules/errors')
 
 
 const router = express.Router()
@@ -20,53 +21,68 @@ router.get('/', (_, res) => {
 })
 
 // GET /login
-router.get('/login', hasQueryParams('user'), (req, res, next) => {
-  const { user, redirect, zone, product = PRODUCT_ATOM, nolink } = req.query
-  const { STAGE = 'dev' } = process.env
-  let origin = `${req.protocol}://${req.get('host')}`
-  if (STAGE) {
-    origin += `/${STAGE}`
-  }
-  // login user and send OTP email
-  return loginUser({
-    user,
-    redirect: decodeURIComponent(redirect || `${origin}/verify`),
-    zone: decodeURIComponent(zone || 'utc'),
-    product,
-    nolink
-  }).then((deliveryInfo) => {
+router.get('/login', hasQueryParams('user'), async (req, res, next) => {
+  try {
+    const { user, redirect, zone, product = PRODUCT_ATOM, nolink } = req.query
+    const { STAGE = 'dev' } = process.env
+    let origin = `${req.protocol}://${req.get('host')}`
+    if (STAGE) {
+      origin += `/${STAGE}`
+    }
+    // login user and send OTP email
+    const deliveryInfo = await loginUser({
+      user,
+      redirect: decodeURIComponent(redirect || `${origin}/verify`),
+      zone: decodeURIComponent(zone || 'utc'),
+      product: product.toLowerCase(),
+      nolink
+    })
+
+
     if (process.env.STAGE === 'local') { 
-      if (deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
-        return res.json({
-          message: `Local keywarden - OTP sent via Ethereal to ${deliveryInfo.accepted[0]}`,
-          user: deliveryInfo.accepted[0],
-          etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo)
-        })
+      if (!deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
+        throw new InternalServerError('Something went wrong sending the passcode.')
       }
-      throw new Error('Something went wrong sending the passcode.')
+      return res.json({
+        message: `Local keywarden - OTP sent via Ethereal to ${deliveryInfo.accepted[0]}`,
+        user: deliveryInfo.accepted[0],
+        etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo)
+      })
     }
     return res.json({
       message: `Login passcode sent to ${user} through email`,
       user,
     })
-  }).catch(next)
+  } catch (err) {
+    if (err instanceof APIError) {
+      return next(err)
+    }
+    next(InternalServerError.fromError(err, 'Failed to complete the login process'))
+  }
 })
 
 // GET /verify
-router.get('/verify', hasQueryParams('user', 'otp'), (req, res, next) => {
-  const { user, reset_uuid, product, timeout } = req.query
-  verifyOTP({
-    ...req.query,
-    reset_uuid: ['1', 'true'].includes(reset_uuid),
-    product,
-    timeout: parseInt(timeout),
-  }).then(token => {
+router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
+  try {
+    const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout } = req.query
+    const token = await verifyOTP({
+      email,
+      otp,
+      reset_uuid: ['1', 'true'].includes(reset_uuid),
+      product: product.toLowerCase(),
+      timeout: parseInt(timeout) || undefined,
+    })
     return res.json({
-      message: `User ${user} verified, please store and use the token responsibly`,
-      user,
+      message: `User ${email} verified, please store and use the token responsibly`,
+      email,
       token,
     })
-  }).catch(next)
+  } catch (err) {
+    if (err instanceof APIError) {
+      return next(err)
+    }
+    next(InternalServerError.fromError(err, 'Failed to verify the OTP'))
+  }
 })
 
 // GET /confirm
@@ -82,60 +98,87 @@ router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
 })
 
 // GET /refresh
-router.get('/refresh', confirmed(), async (req, res) => {
-  const { query: { newProduct = '' } } = req
-  const { email } = req.userInfo
-  req.userInfo = newProduct ? await getUserInfo({ email, product: newProduct.toLowerCase() }) : req.userInfo
-  const { api_access = {}, jwt_uuid, prefix, product } = req.userInfo
-  const token = signJWT({ email, api_access, jwt_uuid, prefix, product: product.toLowerCase() })
+router.get(
+  '/refresh',
+  confirmed({ forceLight: ({ prefix }) => prefix === PREFIX_MOBILE_SDK }),
+  async (req, res, next) => {
+    try {
+      const { query: { newProduct, timeout } } = req
+      let { userInfo } = req.userInfo
+      const { email, light, product, prefix } = userInfo
+      const safeNewProduct = newProduct ? newProduct.toLowerCase() : undefined
 
-  return res.json({
-    message: `Token refreshed for user ${email}, please store and use the token responsibly`,
-    token,
-    user: email,
-  })
-})
+      if (light || safeNewProduct !== product) {
+        // need to fetch user info as req.userInfo = value in supplied jwt
+        userInfo = await getUserInfo({
+          email,
+          product: safeNewProduct && prefix !== PREFIX_MOBILE_SDK ? safeNewProduct : product,
+        })
+      }
+    
+      const token = signJWT(userInfo, { timeout })
+
+      return res.json({
+        message: `Token refreshed for user ${email}, please store and use the token responsibly`,
+        token,
+        user: email,
+      })
+    } catch (err) {
+      if (err instanceof APIError) {
+        return next(err)
+      }
+      next(InternalServerError.fromError(err, 'Failed to refresh the token'))
+    }
+  },
+)
 
 // GET /access
-router.get('/access', confirmed(), (req, res) => {
-  // extract access information from DB checked JWT
-  const {
-    prefix,
-    api_access: { wl, customers, ...access },
-    email,
-  } = req.userInfo
-  // extract target access information
-  const {
-    product, // omitted
-    light, // omitted
-    prefix: targetPrefix,
-    wl: targetWL = '',
-    customers: targetCustomers = '',
-    ...targetAccess
-  } = req.query
-  // perform full access check
-  fullCheck({
-    target: {
-      prefix: targetPrefix,
-      access: targetAccess,
-      clients: {
-        wl: targetWL.split(',').filter(v => v),
-        customers: targetCustomers.split(',').filter(v => v),
-      },
-    },
-    me: {
+router.get('/access', confirmed(), (req, res, next) => {
+  try {
+    // extract access information from DB checked JWT
+    const {
       prefix,
-      access,
-      clients: { wl, customers },
-    },
-  })
-  return res.json({
-    email,
-    prefix,
-    wl,
-    customers,
-    ...access,
-  })
+      api_access: { wl, customers, ...access },
+      email,
+    } = req.userInfo
+    // extract target access information
+    const {
+      product, // omitted
+      light, // omitted
+      prefix: targetPrefix,
+      wl: targetWL = '',
+      customers: targetCustomers = '',
+      ...targetAccess
+    } = req.query
+    // perform full access check
+    fullCheck({
+      target: {
+        prefix: targetPrefix,
+        access: targetAccess,
+        clients: {
+          wl: targetWL.split(',').filter(v => v),
+          customers: targetCustomers.split(',').filter(v => v),
+        },
+      },
+      me: {
+        prefix,
+        access,
+        clients: { wl, customers },
+      },
+    })
+    return res.json({
+      email,
+      prefix,
+      wl,
+      customers,
+      ...access,
+    })
+  } catch (err) {
+    if (err instanceof APIError) {
+      return next(err)
+    }
+    next(InternalServerError.fromError(err, 'Failed to confirm access permissions'))
+  }
 })
 
 module.exports = router

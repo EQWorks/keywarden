@@ -1,5 +1,6 @@
 const { verifyJWT, confirmUser } = require('../modules/auth')
 const { PREFIX_MOBILE_SDK, PREFIX_PUBLIC, PRODUCT_ATOM } = require('../constants')
+const { APIError } = require('../modules/errors')
 
 
 // Helper function to generate an IAM policy
@@ -28,7 +29,7 @@ const getUserAccess = async (token) => {
 
   // payload fields existence check
   if (['email', 'api_access', 'jwt_uuid'].some(field => !(field in access))) {
-    throw Error('JWT missing required fields in payload')
+    throw new APIError({ message: 'JWT missing required fields in payload', statusCode: 400 })
   }
 
   // light check for mobile SDK
@@ -61,7 +62,7 @@ const isPublicToken = (token) => token.indexOf('public') !== -1
 const getAPIRootResource = (resource) => {
   const matches = resource.match(/^arn:aws:execute-api:[^/]+\/[^/]+\//)
   if (!matches || matches.length !== 1) {
-    throw Error('Not an API resource')
+    throw new APIError({ message: 'Not an API resource', statusCode: 400 })
   }
   return `${matches[0]}*`
 }

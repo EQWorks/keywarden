@@ -1,6 +1,9 @@
 const _sentry = require('@sentry/node')
 const { KEYWARDEN_VER, SENTRY_URL, STAGE = 'dev' } = process.env
 
+const LOG_LEVEL_WARNING = 'WARNING'
+const LOG_LEVEL_ERROR = 'ERROR'
+
 // IIFE to encapsulate sentry in namespace
 const sentry = (() => {
   let sentryObj
@@ -23,7 +26,7 @@ const sentry = (() => {
     // middleware to push error to Sentry
     const errorHandler = _sentry.Handlers.errorHandler({
       // only log to Sentry unknown errors or errors we have categorized as 'ERROR'
-      shouldHandleError: (err) => err.logLevel === undefined || err.logLevel === 'ERROR',
+      shouldHandleError: (err) => err.logLevel === undefined || err.logLevel === LOG_LEVEL_ERROR,
     })
   
     // log errors outside error handler
@@ -52,12 +55,12 @@ class APIError extends Error {
    */
   constructor(options) {
     const _options = typeof options === 'string' ? { message: options } : options || {}
-    const { message = 'Error', statusCode = 500, logLevel = 'ERROR' } = _options
+    const { message = 'Error', statusCode = 500, logLevel } = _options
 
     super(message)
     this.name = 'APIError'
     this.statusCode = statusCode
-    this.logLevel = logLevel
+    this.logLevel = logLevel || (statusCode >= 500 ? LOG_LEVEL_ERROR : LOG_LEVEL_WARNING)
   }
 
   /**
@@ -84,11 +87,12 @@ class APIError extends Error {
    * Create a new instance of APIError from Error object
    * Error supplied in constructor can be accessed via the 'originalError' property
    * @param {Error} err
-   * @param {{statusCode: number, logLevel: string}} options
+   * @param {(string|{message: string, statusCode: number, logLevel: string})} options
    * @return {APIError}
    */
   static fromError(err, options) {
-    const newErr =  new (this)({ ...options, message: err.message })
+    const _options = typeof options === 'string' ? { message: options } : options || {}
+    const newErr =  new (this)({ message: err.message, ..._options })
     newErr.originalError = err
     return newErr
   }
@@ -104,7 +108,7 @@ class AuthenticationError extends APIError {
    */
   constructor(options) {
     const _options = typeof options === 'string' ? { message: options } : options || {}
-    super({ ..._options, statusCode: 401, logLevel: 'WARNING' })
+    super({ ..._options, statusCode: 401, logLevel: LOG_LEVEL_WARNING })
     this.name = 'AuthenticationError'
   }
 }
@@ -118,8 +122,22 @@ class AuthorizationError extends APIError {
    */
   constructor(options) {
     const _options = typeof options === 'string' ? { message: options } : options || {}
-    super({ ..._options, statusCode: 403, logLevel: 'WARNING' })
+    super({ ..._options, statusCode: 403, logLevel: LOG_LEVEL_WARNING })
     this.name = 'AuthorizationError'
+  }
+}
+
+class InternalServerError extends APIError {
+  /**
+   * Create a new instance of InternalServerError
+   * Accepts either a string (message) or an options object as unique argument
+   * @param {(string|{message: string})} options
+   * @return {InternalServerError}
+   */
+  constructor(options) {
+    const _options = typeof options === 'string' ? { message: options } : options || {}
+    super({ ..._options, message: _options.message || 'Internal Server Error', statusCode: 500, logLevel: LOG_LEVEL_ERROR })
+    this.name = 'InternalServerError'
   }
 }
 
@@ -141,11 +159,12 @@ class CustomError extends APIError {
    * Create a new instance of CustomError from Error object
    * Error supplied in constructor can be accessed via the 'originalError' property
    * @param {Error} err
-   * @param {{statusCode: number, logLevel: string}} options
+   * @param {(string|{message: string, name: string, statusCode: number, logLevel: string})} options
    * @return {CustomError}
    */
   static fromError(err, options) {
-    return super.fromError(err, { ...options, name: err.name })
+    const _options = typeof options === 'string' ? { message: options } : options || {}
+    return super.fromError(err, { name: err.name, ..._options })
   }
 }
 
@@ -154,11 +173,12 @@ class CustomError extends APIError {
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
   const isUnknownError = !(err instanceof APIError)
-  // wrap unknown errors so they all have the same interface
-  const _err = isUnknownError ? CustomError.fromError(err) : err
+  // wrap unknown errors so they all have the same interface.
+  // Substitute original error message so as to not expose private/implementation details
+  const _err = isUnknownError ? InternalServerError.fromError(err) : err
 
   // log errors which not logged to Sentry
-  if (_err.logLevel !== 'ERROR') {
+  if (_err.logLevel !== LOG_LEVEL_ERROR) {
     // log original error
     console.warn(err.stack || err)
   }
@@ -168,4 +188,14 @@ const errorHandler = (err, req, res, next) => {
 
 }
 
-module.exports = { APIError, AuthenticationError, AuthorizationError, CustomError, sentry, errorHandler }
+module.exports = {
+  APIError,
+  AuthenticationError,
+  AuthorizationError,
+  InternalServerError,
+  CustomError,
+  sentry,
+  errorHandler,
+  LOG_LEVEL_ERROR,
+  LOG_LEVEL_WARNING,
+}
