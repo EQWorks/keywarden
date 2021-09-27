@@ -104,7 +104,7 @@ router.get(
   async (req, res, next) => {
     try {
       const { query: { newProduct, timeout } } = req
-      let { userInfo } = req.userInfo
+      let { userInfo } = req
       const { email, light, product, prefix } = userInfo
       const safeNewProduct = newProduct ? newProduct.toLowerCase() : undefined
 
