@@ -38,9 +38,8 @@ const isPrivilegedUser = (email, prefix, api_access) => {
   }
 }
 
-const getUserInfo = async ({ email, product }) => {
+const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   // returns user info
-  product = (product || '').toLowerCase() || PRODUCT_ATOM
   const selects = ['prefix', 'jwt_uuid', 'client', PRODUCT_ATOM, PRODUCT_LOCUS]
   const user = await selectUser({ email, selects })
   
@@ -143,10 +142,17 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   })
 }
 
-const signJWT = (userInfo, secret = JWT_SECRET) => jwt.sign(userInfo, secret, { expiresIn: JWT_TTL })
+const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET } = {}) => {
+  // timeout in seconds
+  const expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
+    ? timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
+    : JWT_TTL
+  jwt.sign({ email, api_access, jwt_uuid, prefix, product }, secret, { expiresIn })
+
+}
 
 // verify user OTP and sign JWT on success
-const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout }) => {
+const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout }) => {
   const { api_access, jwt_uuid, prefix } = await redeemAccess({
     email,
     otp,
@@ -154,19 +160,7 @@ const verifyOTP = async ({ user: email, otp, reset_uuid = false, product = PRODU
     product,
   })
 
-  // timeout in seconds
-  let expiresIn
-  if (timeout && isPrivilegedUser(email, prefix, api_access)) {
-    expiresIn = timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
-  } else {
-    expiresIn = JWT_TTL
-  }
-
-  return jwt.sign(
-    { email, api_access, jwt_uuid, prefix, product: product.toLowerCase() }, 
-    JWT_SECRET,
-    { expiresIn }
-  )
+  return signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout })
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
