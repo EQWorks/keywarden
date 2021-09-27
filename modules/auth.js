@@ -147,8 +147,7 @@ const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeou
   const expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
     ? timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
     : JWT_TTL
-  jwt.sign({ email, api_access, jwt_uuid, prefix, product }, secret, { expiresIn })
-
+  return jwt.sign({ email, api_access, jwt_uuid, prefix, product }, secret, { expiresIn })
 }
 
 // verify user OTP and sign JWT on success
