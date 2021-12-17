@@ -54,9 +54,11 @@ jobs:
           # keywarden API version, passthrough
           KEYWARDEN_VER: ${{ github.sha }}
 
+      - run: npm install -g @eqworks/notify
+
       - name: Notify on deployment status
         if: ${{ always() }}
-        run: npx @eqworks/notify deployment ${GITHUB_REPOSITORY} --commit=${GITHUB_SHA} --stage=${STAGE} --status=${JOB_STATUS}
+        run: notify deployment ${GITHUB_REPOSITORY} --commit=${GITHUB_SHA} --stage=${STAGE} --status=${JOB_STATUS}
         env:
           SLACK_HOOK: ${{ secrets.CD_SLACK_HOOK }}
           JOB_STATUS: ${{ job.status }}
