@@ -56,7 +56,7 @@ jobs:
 
       - name: Notify on deployment status
         if: ${{ always() }}
-        run: npx --verbose -p @eqworks/notify notify deployment ${GITHUB_REPOSITORY} --commit=${GITHUB_SHA} --stage=${STAGE} --status=${JOB_STATUS}
+        run: npx --verbose @eqworks/notify deployment ${GITHUB_REPOSITORY} --commit=${GITHUB_SHA} --stage=${STAGE} --status=${JOB_STATUS}
         env:
           SLACK_HOOK: ${{ secrets.CD_SLACK_HOOK }}
           JOB_STATUS: ${{ job.status }}
