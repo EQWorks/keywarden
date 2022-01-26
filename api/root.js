@@ -125,7 +125,7 @@ router.get(
       }
     
       const token = signJWT(userInfo, { timeout })
-      const { api_access, prefix } = userInfo
+      const { api_access } = userInfo
 
       return res.json({
         message: `Token refreshed for user ${email}, please store and use the token responsibly`,
