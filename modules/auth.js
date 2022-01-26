@@ -159,7 +159,7 @@ const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATO
     product,
   })
 
-  return { token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout }), api_access }
+  return { token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout }), api_access, prefix }
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
