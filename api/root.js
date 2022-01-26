@@ -65,7 +65,7 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
 router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
   try {
     const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout } = req.query
-    const { token, api_access } = await verifyOTP({
+    const { token, api_access, prefix } = await verifyOTP({
       email,
       otp,
       reset_uuid: ['1', 'true'].includes(reset_uuid),
@@ -76,7 +76,10 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
       message: `User ${email} verified, please store and use the token responsibly`,
       email,
       token,
-      access: api_access
+      access: {
+        ...api_access,
+        prefix
+      }
     })
   } catch (err) {
     if (err instanceof APIError) {
@@ -88,14 +91,17 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
 
 // GET /confirm
 router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
-  const { query: { product }, ttl, userInfo: { email: user, light, api_access } } = req
+  const { query: { product }, ttl, userInfo: { email: user, light, api_access, prefix } } = req
   return res.json({
     message: `Token confirmed for user ${user}`,
     user,
     light,
     product,
     ttl,
-    access: api_access
+    access: {
+      ...api_access,
+      prefix,
+    }
   })
 })
 
@@ -119,13 +125,16 @@ router.get(
       }
     
       const token = signJWT(userInfo, { timeout })
-      const { api_access } = userInfo
+      const { api_access, prefix } = userInfo
 
       return res.json({
         message: `Token refreshed for user ${email}, please store and use the token responsibly`,
         token,
         user: email,
-        access: api_access
+        access: {
+          ...api_access,
+          prefix,
+        }
       })
     } catch (err) {
       if (err instanceof APIError) {
@@ -158,7 +167,10 @@ router.get('/access', confirmed(), (req, res, next) => {
     fullCheck({
       target: {
         prefix: targetPrefix,
-        access: targetAccess,
+        access: {
+          ...targetAccess,
+          prefix: targetPrefix,
+        },
         clients: {
           wl: targetWL.split(',').filter(v => v),
           customers: targetCustomers.split(',').filter(v => v),
