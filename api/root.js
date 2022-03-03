@@ -39,7 +39,7 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
     })
 
 
-    if (process.env.STAGE === 'local') { 
+    if (process.env.STAGE === 'local') {
       if (!deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
         throw new InternalServerError('Something went wrong sending the passcode.')
       }
@@ -123,7 +123,7 @@ router.get(
           product: safeNewProduct && prefix !== PREFIX_MOBILE_SDK ? safeNewProduct : product,
         })
       }
-    
+
       const token = signJWT(userInfo, { timeout })
       const { api_access } = userInfo
 

@@ -1,9 +1,9 @@
 const serverless = require('serverless-http')
 const express = require('express')
 const cors = require('cors')
-const bodyParser = require('body-parser')
+
 const { sentry, errorHandler } = require('./modules/errors')
-const {rKillIdleOnExit, wKillIdleOnExit } = require('./modules/db')
+const { rKillIdleOnExit, wKillIdleOnExit } = require('./modules/db')
 
 const api = require('./api')
 
@@ -19,7 +19,7 @@ app.use(sentry().requestHandler)
 app.use(cors())
 app.options('*', cors())
 // bodyParser for json
-app.use(bodyParser.json())
+app.use(express.json({ limit: '4mb' }))
 
 // DB - close idle connections on exit
 app.use(rKillIdleOnExit, wKillIdleOnExit)
