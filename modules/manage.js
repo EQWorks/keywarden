@@ -44,17 +44,18 @@ const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
   return conditions
 }
 
+const BASE_SELECTS = ['email', 'prefix', 'client', 'info', 'access', 'active']
 // list users that the given user (email) has access to
 const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
-  const selects = ['email', 'prefix', 'client', 'info', product]
+  const selects = [...BASE_SELECTS, product]
   return listUsers({ selects, conditions })
 }
 
 // get a user by email that the given user (email) has access to
 const getUser = async ({ email, prefix, api_access, product = PRODUCT_ATOM }) => {
   const conditions = _prepareConditions({ prefix, api_access, product })
-  const selects = ['email', 'prefix', 'client', 'info', product]
+  const selects = [...BASE_SELECTS, product]
   const user = await selectUser({ email, selects, conditions })
 
   if (!user) {

@@ -40,9 +40,9 @@ const isPrivilegedUser = (email, prefix, api_access) => {
 
 const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   // returns user info
-  const selects = ['prefix', 'jwt_uuid', 'client', PRODUCT_ATOM, PRODUCT_LOCUS]
+  const selects = ['prefix', 'jwt_uuid', 'client', 'active', 'access', PRODUCT_ATOM, PRODUCT_LOCUS]
   const user = await selectUser({ email, selects })
-  
+
   if (!user) {
     throw new APIError({
       message: `User ${email} not found`,
@@ -52,14 +52,26 @@ const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
 
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user[PRODUCT_ATOM]
-
+  // TODO: progressive transition to new `access` system (see comments on vX per relevant line)
   return {
-    ...user,
+    ...user, // `user.prefix` could still be used for special cases: internal+ (-1/-1 client) and mobile-sdk tokens
     email,
-    product,
+    product, // v0; deprecated in v1+
     api_access: {
-      ...user.client,
-      ...productAccess,
+      ...user.client, // v0, v1; to be deprecated in v2+
+      ...productAccess, // v0; to be deprecated in v1+
+      version: 0, // denotes legacy pre-`access` format
+      ...user.access, // v1+ policies based `access`, would contain `version` to override ^
+      // v1 would contain `policies` fields, which may look like:
+      // policies: [
+      //   'ql:read',
+      //   'ql:write',
+      //   'user:read',
+      //   'finance:read',
+      // ],
+      // where each policy is dictated and validated by the product API services
+      // v2 could override per-WL policies (e.g.: { wl { cu: -1|[...], policies: [...] } } })
+      // v3 could override per-CU policies (e.g.: { wl: { cu: { policies: [...] } } })
     },
   }
 }
@@ -147,7 +159,14 @@ const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeou
   const expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
     ? timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
     : JWT_TTL
-  return jwt.sign({ email, api_access, jwt_uuid, prefix, product }, secret, { expiresIn })
+
+  // TODO: remove `product` from JWT when v1 `access` is stable/universal
+  const toSign = { email, api_access, jwt_uuid, prefix, product }
+  // for v1+ `access` system, detach access info from JWT
+  if (api_access.version > 0) {
+    toSign.api_access = { version: api_access.version }
+  }
+  return jwt.sign(toSign, secret, { expiresIn })
 }
 
 // verify user OTP and sign JWT on success
@@ -164,17 +183,21 @@ const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATO
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
 
-// confirm user with supplied JWT payload
+// confirm user with supplied JWT payload vs. user info from DB
 const confirmUser = async ({ email, api_access, jwt_uuid, reset_uuid, product }) => {
-  const userInfo = await getUserInfo({ email, product })
+  const userInfo = await getUserInfo({ email, product }) // TODO: remove `product` when v1 `access` is universal
   const { api_access: _access, jwt_uuid: _uuid } = userInfo
-  // confirm both JWT UUID and api_access integrity
-  if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
-    throw new AuthorizationError(`Token payload no longer valid for user ${email}`)
+  // confirm JWT UUID integrity
+  if (jwt_uuid !== _uuid) {
+    throw new AuthorizationError(`Invalid UUID for user ${email}`)
+  }
+  // legacy v0 `access` system check
+  if (!_access.version && !isEqual(_access, api_access)) {
+    throw new AuthorizationError(`Invalid v0 access for user ${email}`)
   }
   if (reset_uuid) {
-    const uuid = await _resetUUID({ email })
-    return { ...userInfo, jwt_uuid: uuid }
+    const jwt_uuid = await _resetUUID({ email })
+    return { ...userInfo, jwt_uuid }
   }
   return userInfo
 }

@@ -1,6 +1,6 @@
 const { verifyJWT, confirmUser } = require('../modules/auth')
 const { PREFIX_MOBILE_SDK, PREFIX_PUBLIC, PRODUCT_ATOM } = require('../constants')
-const { APIError } = require('../modules/errors')
+const { APIError, AuthorizationError } = require('../modules/errors')
 
 
 // Helper function to generate an IAM policy
@@ -19,7 +19,7 @@ const generateAuthPolicy = (resource, proceed = false, access = {}) => {
   }
 }
 
-// throws if faillure
+// TODO: factor out the common logic with `middleware.confirmed`
 const getUserAccess = async (token) => {
   // preliminary jwt verify
   const access = verifyJWT(token)
@@ -28,26 +28,26 @@ const getUserAccess = async (token) => {
   access.product = access.product || PRODUCT_ATOM
 
   // payload fields existence check
-  if (['email', 'api_access', 'jwt_uuid'].some(field => !(field in access))) {
-    throw new APIError({ message: 'JWT missing required fields in payload', statusCode: 400 })
+  const fields = ['email', 'api_access', 'jwt_uuid']
+  if (!fields.every(k => k in access)) {
+    throw new AuthorizationError('JWT missing required fields in payload')
   }
 
-  // light check for mobile SDK
+  // force light mode if user.prefix is PREFIX_MOBILE_SDK
   if (access.prefix === PREFIX_MOBILE_SDK) {
     return access
   }
-
-  // check that accesses and uuid have not changed for user
-  await confirmUser(access)
-
-  return access
+  // confirm against DB user data and return the DB version (for v1+ `access` system)
+  return confirmUser(access)
 }
 
 // generates a generic access object with public permissions
-const genPublicAccess = (id) => ({
-  email: id,
+const genPublicAccess = (email) => ({
+  email,
   prefix: PREFIX_PUBLIC,
+  // TODO: increment `version` and remove other fields when v1 `access` is universal
   api_access: {
+    version: 0,
     wl: [],
     customers: [],
     read : 0,

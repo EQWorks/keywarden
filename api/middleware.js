@@ -10,17 +10,16 @@ const moment = require('moment-timezone')
  * Factory function for access verification middleware
  * Light check only confirms integrity of JWT while full check confirms that
  * JWT access payload aligns with the user's CURRENT permissions
- * @param {Object} options 
+ * @param {Object} options
  * @param {boolean|(access: object) => boolean} [options.forceLight=false] Boolean flag or callback function to indicate whether
  * //to force a light check or not
  * @param {boolean|(access: object) => boolean} [options.allowLight=false] Boolean flag or callback function to indicate whether
  * // to allow a  check or not. When resolving to true, the caller may request a light check by supplying req.light === '1'|'true'
  * @returns {function} Middleware function
  */
-const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (req, res, next) => {
+const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (req, _, next) => {
   try {
     const { light, reset_uuid, product: targetProduct = PRODUCT_ATOM } = req.query
-    const fields = ['email', 'api_access', 'jwt_uuid']
     const token = req.get('eq-api-jwt')
 
     let user
@@ -32,15 +31,16 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
       throw new AuthorizationError.fromError(err, { message: `Invalid JWT: ${token}`, logLevel: LOG_LEVEL_ERROR })
     }
 
-    // set product to atom if missing from jwt or falsy for backward compatibility
-    user.product = user.product || PRODUCT_ATOM
-
     // payload fields existence check
+    const fields = ['email', 'api_access', 'jwt_uuid']
     if (!fields.every(k => k in user)) {
       throw new AuthorizationError('JWT missing required fields in payload')
     }
 
     // product check
+    // set product to atom if missing from jwt or falsy for backward compatibility
+    // TODO: deprecated, remove when v1 `access` is universal
+    user.product = user.product || PRODUCT_ATOM
     const safeTargetProduct = targetProduct.toLowerCase()
     if (safeTargetProduct !== 'all' && user.product !== safeTargetProduct) {
       throw new AuthorizationError('JWT not valid for this resource')
@@ -53,7 +53,6 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
       friendly: moment.duration(ttl).humanize()
     }
 
-    // DB integrity check
     if (
       typeof forceLight === 'function' ? forceLight(user) : forceLight
       || (
@@ -61,14 +60,17 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
         && ['1', 'true'].includes((light || '').toLowerCase())
       )
     ) {
+      // TODO: for v1+ `access` system, light check means no understanding of user.api_access
       req.userInfo = { ...user, light: true }
       return next()
     }
 
+    // DB integrity check
     const userInfo = await confirmUser({
       ...user,
       reset_uuid: ['1', 'true'].includes((reset_uuid || '').toLowerCase()),
       // check accesses relative to product embedded in jwt when query param 'product' === 'all'
+      // TODO: remove when v1 `access` is universal
       product: safeTargetProduct === 'all' ? user.product : safeTargetProduct,
     })
     req.userInfo = { ...userInfo, light: false }
