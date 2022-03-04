@@ -154,7 +154,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   })
 }
 
-const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET } = {}) => {
+const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET, future_access } = {}) => {
   // timeout in seconds
   const expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
     ? timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
@@ -163,14 +163,14 @@ const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeou
   // TODO: remove `product` from JWT when v1 `access` is stable/universal
   const toSign = { email, api_access, jwt_uuid, prefix, product }
   // for v1+ `access` system, detach access info from JWT
-  if (api_access.version > 0) {
+  if (future_access && api_access.version > 0) {
     toSign.api_access = { version: api_access.version }
   }
   return jwt.sign(toSign, secret, { expiresIn })
 }
 
 // verify user OTP and sign JWT on success
-const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout }) => {
+const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout, future_access }) => {
   const { api_access, jwt_uuid, prefix } = await redeemAccess({
     email,
     otp,
@@ -178,7 +178,11 @@ const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATO
     product,
   })
 
-  return { token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout }), api_access, prefix }
+  return {
+    token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout, future_access }),
+    api_access,
+    prefix,
+  }
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)

@@ -64,13 +64,14 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
 // GET /verify
 router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
   try {
-    const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout } = req.query
+    const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout, future_access } = req.query
     const { token, api_access, prefix } = await verifyOTP({
       email,
       otp,
       reset_uuid: ['1', 'true'].includes(reset_uuid),
       product: product.toLowerCase(),
       timeout: parseInt(timeout) || undefined,
+      future_access: ['1', 'true'].includes(future_access),
     })
     return res.json({
       message: `User ${email} verified, please store and use the token responsibly`,
@@ -111,7 +112,7 @@ router.get(
   confirmed({ forceLight: ({ prefix }) => prefix === PREFIX_MOBILE_SDK }),
   async (req, res, next) => {
     try {
-      const { query: { newProduct, timeout } } = req
+      const { query: { newProduct, timeout, future_access } } = req
       let { userInfo } = req
       const { email, light, product, prefix } = userInfo
       const safeNewProduct = newProduct ? newProduct.toLowerCase() : undefined
@@ -124,7 +125,7 @@ router.get(
         })
       }
 
-      const token = signJWT(userInfo, { timeout })
+      const token = signJWT(userInfo, { timeout, future_access: ['1', 'true'].includes(future_access) })
       const { api_access } = userInfo
 
       return res.json({
