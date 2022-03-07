@@ -163,7 +163,7 @@ const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeou
   // TODO: remove `product` from JWT when v1 `access` is stable/universal
   const toSign = { email, api_access, jwt_uuid, prefix, product }
   // for v1+ `access` system, detach access info from JWT
-  if (future_access && api_access.version > 0) {
+  if (future_access && (api_access || {}).version > 0) {
     toSign.api_access = { version: api_access.version }
   }
   return jwt.sign(toSign, secret, { expiresIn })
