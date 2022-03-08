@@ -3,7 +3,12 @@ const { AuthorizationError } = require('./errors')
 
 
 const checkAccess = ({ targetAccess, access, name }) => {
-  const pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
+  let pass
+  if (name === 'policies'){
+    pass =targetAccess.every((policy)=> access.includes(policy))
+  }else{
+    pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
+  }
   if (pass) {
     return
   }
@@ -58,11 +63,16 @@ const fullCheck = ({ target, me }) => {
   checkPrefix({ targetPrefix, prefix })
   // numerical access check
   for (const name of Object.keys(targetAccess)) {
-    checkAccess({
+    let accessCheck = {
       targetAccess: parseInt(targetAccess[name]) || 0,
       access: parseInt(access[name]) || 0,
       name,
-    })
+    }
+    if (name === 'policies'){
+      accessCheck['targetAccess'] = targetAccess[name] || []
+      accessCheck['access'] = access[name] || []
+    }
+    checkAccess(accessCheck)
   }
   // check clients
   for (const name of Object.keys(targetClients)) {
