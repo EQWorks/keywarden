@@ -1,6 +1,6 @@
-const { verifyJWT, confirmUser } = require('../modules/auth')
-const { PREFIX_MOBILE_SDK, PREFIX_PUBLIC, PRODUCT_ATOM } = require('../constants')
-const { APIError, AuthorizationError } = require('../modules/errors')
+const { getUserAccess } = require('../modules/auth')
+const { PREFIX_PUBLIC } = require('../constants')
+const { APIError } = require('../modules/errors')
 
 
 // Helper function to generate an IAM policy
@@ -17,28 +17,6 @@ const generateAuthPolicy = (resource, proceed = false, access = {}) => {
     },
     context: { access: JSON.stringify(access) }
   }
-}
-
-// TODO: factor out the common logic with `middleware.confirmed`
-const getUserAccess = async (token) => {
-  // preliminary jwt verify
-  const access = verifyJWT(token)
-
-  // set product to atom if missing from jwt or falsy for backward compatibility
-  access.product = access.product || PRODUCT_ATOM
-
-  // payload fields existence check
-  const fields = ['email', 'api_access', 'jwt_uuid']
-  if (!fields.every(k => k in access)) {
-    throw new AuthorizationError('JWT missing required fields in payload')
-  }
-
-  // force light mode if user.prefix is PREFIX_MOBILE_SDK
-  if (access.prefix === PREFIX_MOBILE_SDK) {
-    return access
-  }
-  // confirm against DB user data and return the DB version (for v1+ `access` system)
-  return confirmUser(access)
 }
 
 // generates a generic access object with public permissions
@@ -77,7 +55,7 @@ module.exports.handler = async ({ authorizationToken: token, methodArn } = {}) =
       return generateAuthPolicy(rootResource, true, publicAccess)
     }
 
-    const userAccess = await getUserAccess(token)
+    const userAccess = await getUserAccess({token})
     return generateAuthPolicy(rootResource, true, userAccess)
 
   } catch (err) {

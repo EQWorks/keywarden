@@ -206,6 +206,51 @@ const confirmUser = async ({ email, api_access, jwt_uuid, reset_uuid, product })
   return userInfo
 }
 
+const getUserAccess = async ({user, token, light, reset_uuid, targetProduct, forceLight = false, allowLight = false}) => {
+
+  // preliminary jwt verify
+  user = user || verifyJWT(token)
+
+  // payload fields existence check
+  const fields = ['email', 'api_access', 'jwt_uuid']
+  if (!fields.every(k => k in user)) {
+    throw new AuthorizationError('JWT missing required fields in payload')
+  }
+
+  // product check
+  // set product to atom if missing from jwt or falsy for backward compatibility
+  // TODO: deprecated, remove when v1 `access` is universal
+  user.product = user.product || PRODUCT_ATOM
+  if (targetProduct){
+    const safeTargetProduct = targetProduct.toLowerCase()
+    if (safeTargetProduct !== 'all' && user.product !== safeTargetProduct) {
+      throw new AuthorizationError('JWT not valid for this resource')
+    }
+    // check accesses relative to product embedded in jwt when query param 'product' === 'all'
+    // TODO: remove when v1 `access` is universal
+    user.product = safeTargetProduct === 'all' ? user.product : safeTargetProduct
+  }
+
+  // force light mode if user.prefix is PREFIX_MOBILE_SDK
+  if (
+    typeof forceLight === 'function' ? forceLight(user) : forceLight
+    || (
+      typeof allowLight === 'function' ? allowLight(user) : allowLight
+      && ['1', 'true'].includes((light || '').toLowerCase()) 
+    )|| user.prefix === PREFIX_MOBILE_SDK
+  ) {
+    // TODO: for v1+ `access` system, light check means no understanding of user.api_access
+    return { ...user, light: true }
+    
+  }
+  // confirm against DB user data and return the DB version (for v1+ `access` system)
+  user = await  confirmUser({
+    ...user,
+    reset_uuid: ['1', 'true'].includes((reset_uuid || '').toLowerCase()),
+  })
+  return { ...user, light: false }
+}
+
 module.exports = {
   loginUser,
   signJWT,
@@ -214,4 +259,5 @@ module.exports = {
   confirmUser,
   getUserInfo,
   isPrivilegedUser,
+  getUserAccess,
 }

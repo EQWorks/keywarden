@@ -1,4 +1,4 @@
-const { verifyJWT, confirmUser } = require('../modules/auth')
+const { verifyJWT, getUserAccess } = require('../modules/auth')
 const { PRODUCT_ATOM } = require('../constants')
 const { AuthorizationError, APIError, InternalServerError, LOG_LEVEL_ERROR } = require('../modules/errors')
 const moment = require('moment-timezone')
@@ -31,21 +31,6 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
       throw new AuthorizationError.fromError(err, { message: `Invalid JWT: ${token}`, logLevel: LOG_LEVEL_ERROR })
     }
 
-    // payload fields existence check
-    const fields = ['email', 'api_access', 'jwt_uuid']
-    if (!fields.every(k => k in user)) {
-      throw new AuthorizationError('JWT missing required fields in payload')
-    }
-
-    // product check
-    // set product to atom if missing from jwt or falsy for backward compatibility
-    // TODO: deprecated, remove when v1 `access` is universal
-    user.product = user.product || PRODUCT_ATOM
-    const safeTargetProduct = targetProduct.toLowerCase()
-    if (safeTargetProduct !== 'all' && user.product !== safeTargetProduct) {
-      throw new AuthorizationError('JWT not valid for this resource')
-    }
-
     // determine JWT TTL
     const ttl = 'exp' in user ? 1000 * user.exp - Date.now() : -1
     req.ttl = {
@@ -53,27 +38,9 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
       friendly: moment.duration(ttl).humanize()
     }
 
-    if (
-      typeof forceLight === 'function' ? forceLight(user) : forceLight
-      || (
-        typeof allowLight === 'function' ? allowLight(user) : allowLight
-        && ['1', 'true'].includes((light || '').toLowerCase())
-      )
-    ) {
-      // TODO: for v1+ `access` system, light check means no understanding of user.api_access
-      req.userInfo = { ...user, light: true }
-      return next()
-    }
+    user = await getUserAccess({user, light, reset_uuid, targetProduct, forceLight, allowLight})
 
-    // DB integrity check
-    const userInfo = await confirmUser({
-      ...user,
-      reset_uuid: ['1', 'true'].includes((reset_uuid || '').toLowerCase()),
-      // check accesses relative to product embedded in jwt when query param 'product' === 'all'
-      // TODO: remove when v1 `access` is universal
-      product: safeTargetProduct === 'all' ? user.product : safeTargetProduct,
-    })
-    req.userInfo = { ...userInfo, light: false }
+    req.userInfo = user
     return next()
   } catch (err) {
     if (err instanceof APIError) {
