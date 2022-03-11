@@ -19,7 +19,7 @@ const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
   JWT_SECRET,
   JWT_TTL = 90 * 24 * 60 * 60, // in seconds
-  APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2)
+  APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2),
 } = process.env
 
 const isPrivilegedUser = (email, prefix, api_access) => {
@@ -46,7 +46,7 @@ const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   if (!user) {
     throw new APIError({
       message: `User ${email} not found`,
-      statusCode: 404
+      statusCode: 404,
     })
   }
 

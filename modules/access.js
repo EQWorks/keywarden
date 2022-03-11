@@ -5,7 +5,7 @@ const { AuthorizationError } = require('./errors')
 const checkAccess = ({ targetAccess, access, name }) => {
   let pass
   if (name === 'policies'){
-    pass =targetAccess.every((policy)=> access.includes(policy))
+    pass = targetAccess.every((policy) => access.includes(policy))
   }else{
     pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
   }

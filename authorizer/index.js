@@ -13,9 +13,9 @@ const generateAuthPolicy = (resource, proceed = false, access = {}) => {
         Action: 'execute-api:Invoke',
         Effect: proceed ? 'Allow' : 'Deny',
         Resource: resource,
-      }]
+      }],
     },
-    context: { access: JSON.stringify(access) }
+    context: { access: JSON.stringify(access) },
   }
 }
 
@@ -30,7 +30,7 @@ const genPublicAccess = (email) => ({
     customers: [],
     read : 0,
     write : 0,
-  }
+  },
 })
 
 // confirms that token matches 'public' token pattern

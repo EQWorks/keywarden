@@ -35,7 +35,7 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
     const ttl = 'exp' in user ? 1000 * user.exp - Date.now() : -1
     req.ttl = {
       millis: ttl,
-      friendly: moment.duration(ttl).humanize()
+      friendly: moment.duration(ttl).humanize(),
     }
 
     user = await getUserAccess({user, light, reset_uuid, targetProduct, forceLight, allowLight})

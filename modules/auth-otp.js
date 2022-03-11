@@ -26,7 +26,7 @@ redisClient.defineCommand('getOrSet', {
 
     -- otherwise return key
     return {redis.call('GET', KEYS[1]), ttl}
-  `
+  `,
 })
 
 /**
@@ -135,5 +135,5 @@ const redeemOTP = async ({ otp, email, secret, length = 6 }) => {
 
 module.exports = {
   claimOTP,
-  redeemOTP
+  redeemOTP,
 }

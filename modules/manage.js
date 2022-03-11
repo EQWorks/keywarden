@@ -32,7 +32,7 @@ const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
   } else if (prefix === PREFIX_CUSTOMERS) {
     if (customers !== -1) {
       conditions.push(
-        `client->'customers' <@ '${JSON.stringify(customers)}'::jsonb`
+        `client->'customers' <@ '${JSON.stringify(customers)}'::jsonb`,
       )
     }
     conditions.push(`(
@@ -61,7 +61,7 @@ const getUser = async ({ email, prefix, api_access, product = PRODUCT_ATOM }) =>
   if (!user) {
     throw new APIError({
       message: `User ${email} not found`,
-      statusCode: 404
+      statusCode: 404,
     })
   }
 

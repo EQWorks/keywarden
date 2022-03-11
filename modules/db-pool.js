@@ -29,7 +29,7 @@ const connectionIsHealthy = (client) => {
     // ok if undefined as some stream properties were only added in node 12.9.0
     // stream should be an instance of net.Socket (itself a stream.Duplex)
     return client.connection.stream instanceof Socket && Object.entries(streamHealthChecks).every(
-      ([key, value]) => key in client.connection.stream ? client.connection.stream[key] === value : true
+      ([key, value]) => key in client.connection.stream ? client.connection.stream[key] === value : true,
     )
 
   } catch (_) {
@@ -116,7 +116,7 @@ module.exports = class DBPool {
     const unhealthyErr = new CustomError({
       message: `Unhealthy connection detected in _acquireClient() after timeout. Failed checks: ${JSON.stringify(getConnectionFailedChecks(client))}`,
       name: 'DBPoolDebug',
-      logLevel: 'DEBUG'
+      logLevel: 'DEBUG',
     })
     this._logError(unhealthyErr)
     try {
@@ -129,7 +129,7 @@ module.exports = class DBPool {
       throw new CustomError({
         message: `Error while acquiring DB client: [code: ${err.code}] ${err.message}`,
         name: 'ClientAcquisitionDBPoolError',
-        logLevel: 'ERROR'
+        logLevel: 'ERROR',
       })
   
     } finally {
@@ -158,7 +158,7 @@ module.exports = class DBPool {
         this._logError(new CustomError({
           message: `Connection error detected in _retryOnConnectionError(). Failed checks: ${JSON.stringify(getConnectionFailedChecks(client))}. Error: [code: ${err.code}] ${err.message}`,
           name: 'DBPoolDebug',
-          logLevel: 'DEBUG'
+          logLevel: 'DEBUG',
         }))
         // pass error to release to remove the client from the node-pg Pool
         client.release(err)

@@ -35,7 +35,7 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
       redirect: decodeURIComponent(redirect || `${origin}/verify`),
       zone: decodeURIComponent(zone || 'utc'),
       product: product.toLowerCase(),
-      nolink
+      nolink,
     })
 
 
@@ -46,7 +46,7 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
       return res.json({
         message: `Local keywarden - OTP sent via Ethereal to ${deliveryInfo.accepted[0]}`,
         user: deliveryInfo.accepted[0],
-        etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo)
+        etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo),
       })
     }
     return res.json({
@@ -79,8 +79,8 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
       token,
       access: {
         ...api_access,
-        prefix
-      }
+        prefix,
+      },
     })
   } catch (err) {
     if (err instanceof APIError) {
@@ -102,7 +102,7 @@ router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
     access: {
       ...api_access,
       prefix,
-    }
+    },
   })
 })
 
@@ -135,7 +135,7 @@ router.get(
         access: {
           ...api_access,
           prefix,
-        }
+        },
       })
     } catch (err) {
       if (err instanceof APIError) {
