@@ -55,7 +55,7 @@ module.exports.handler = async ({ authorizationToken: token, methodArn } = {}) =
       return generateAuthPolicy(rootResource, true, publicAccess)
     }
 
-    const userAccess = await getUserAccess({token})
+    const userAccess = await getUserAccess({ token })
     return generateAuthPolicy(rootResource, true, userAccess)
 
   } catch (err) {

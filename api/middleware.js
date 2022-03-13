@@ -38,7 +38,7 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
       friendly: moment.duration(ttl).humanize(),
     }
 
-    user = await getUserAccess({user, light, reset_uuid, targetProduct, forceLight, allowLight})
+    user = await getUserAccess({ user, light, reset_uuid, targetProduct, forceLight, allowLight })
 
     req.userInfo = user
     return next()

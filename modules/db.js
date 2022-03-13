@@ -41,7 +41,7 @@ const listUsers = async ({ selects, conditions }) => {
 
 const insertUser = async ({ email, ...props }) => {
   _checkEmpty({ email })
-  const entries = Object.entries({ email, ...props})
+  const entries = Object.entries({ email, ...props })
   try {
     await wPool.query(`
       INSERT INTO equsers

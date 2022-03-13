@@ -85,7 +85,7 @@ const redeemAccess = async ({ email, otp, reset_uuid = false, product = PRODUCT_
       throw new AuthorizationError(`Invalid passcode for ${email}`)
     }
   } else {
-    await redeemOTP({ otp, email, secret: JWT_SECRET, length: 6})
+    await redeemOTP({ otp, email, secret: JWT_SECRET, length: 6 })
   }
 
   // set `jwt_uuid` if not set already
@@ -121,7 +121,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
     otp = APP_REVIEWER_OTP
     ttl = Date.now() + OTP_TTL
   } else {
-    const otpObj = await claimOTP({ email: user, secret: JWT_SECRET, length: 6, minTTL: OTP_TTL, resetTTL: OTP_TTL * 2})
+    const otpObj = await claimOTP({ email: user, secret: JWT_SECRET, length: 6, minTTL: OTP_TTL, resetTTL: OTP_TTL * 2 })
     otp = otpObj.otp
     ttl = otpObj.ttl
   }
@@ -206,7 +206,7 @@ const confirmUser = async ({ email, api_access, jwt_uuid, reset_uuid, product })
   return userInfo
 }
 
-const getUserAccess = async ({user, token, light, reset_uuid, targetProduct, forceLight = false, allowLight = false}) => {
+const getUserAccess = async ({ user, token, light, reset_uuid, targetProduct, forceLight = false, allowLight = false }) => {
 
   // preliminary jwt verify
   user = user || verifyJWT(token)
