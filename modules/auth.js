@@ -19,7 +19,7 @@ const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
   JWT_SECRET,
   JWT_TTL = 90 * 24 * 60 * 60, // in seconds
-  APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2)
+  APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2),
 } = process.env
 
 const isPrivilegedUser = (email, prefix, api_access) => {
@@ -40,26 +40,38 @@ const isPrivilegedUser = (email, prefix, api_access) => {
 
 const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   // returns user info
-  const selects = ['prefix', 'jwt_uuid', 'client', PRODUCT_ATOM, PRODUCT_LOCUS]
+  const selects = ['prefix', 'jwt_uuid', 'client', 'active', 'access', PRODUCT_ATOM, PRODUCT_LOCUS]
   const user = await selectUser({ email, selects })
-  
+
   if (!user) {
     throw new APIError({
       message: `User ${email} not found`,
-      statusCode: 404
+      statusCode: 404,
     })
   }
 
   // product access (read/write) falls back to 'atom' access if empty object
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user[PRODUCT_ATOM]
-
+  // TODO: progressive transition to new `access` system (see comments on vX per relevant line)
   return {
-    ...user,
+    ...user, // `user.prefix` could still be used for special cases: internal+ (-1/-1 client) and mobile-sdk tokens
     email,
-    product,
+    product, // v0; deprecated in v1+
     api_access: {
-      ...user.client,
-      ...productAccess,
+      ...user.client, // v0, v1; to be deprecated in v2+
+      ...productAccess, // v0; to be deprecated in v1+
+      version: 0, // denotes legacy pre-`access` format
+      ...user.access, // v1+ policies based `access`, would contain `version` to override ^
+      // v1 would contain `policies` fields, which may look like:
+      // policies: [
+      //   'ql:read',
+      //   'ql:write',
+      //   'user:read',
+      //   'finance:read',
+      // ],
+      // where each policy is dictated and validated by the product API services
+      // v2 could override per-WL policies (e.g.: { wl { cu: -1|[...], policies: [...] } } })
+      // v3 could override per-CU policies (e.g.: { wl: { cu: { policies: [...] } } })
     },
   }
 }
@@ -73,7 +85,7 @@ const redeemAccess = async ({ email, otp, reset_uuid = false, product = PRODUCT_
       throw new AuthorizationError(`Invalid passcode for ${email}`)
     }
   } else {
-    await redeemOTP({ otp, email, secret: JWT_SECRET, length: 6})
+    await redeemOTP({ otp, email, secret: JWT_SECRET, length: 6 })
   }
 
   // set `jwt_uuid` if not set already
@@ -109,7 +121,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
     otp = APP_REVIEWER_OTP
     ttl = Date.now() + OTP_TTL
   } else {
-    const otpObj = await claimOTP({ email: user, secret: JWT_SECRET, length: 6, minTTL: OTP_TTL, resetTTL: OTP_TTL * 2})
+    const otpObj = await claimOTP({ email: user, secret: JWT_SECRET, length: 6, minTTL: OTP_TTL, resetTTL: OTP_TTL * 2 })
     otp = otpObj.otp
     ttl = otpObj.ttl
   }
@@ -142,16 +154,23 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   })
 }
 
-const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET } = {}) => {
+const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET, future_access } = {}) => {
   // timeout in seconds
   const expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
     ? timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
     : JWT_TTL
-  return jwt.sign({ email, api_access, jwt_uuid, prefix, product }, secret, { expiresIn })
+
+  // TODO: remove `product` from JWT when v1 `access` is stable/universal
+  const toSign = { email, api_access, jwt_uuid, prefix, product }
+  // for v1+ `access` system, detach access info from JWT
+  if (future_access && (api_access || {}).version > 0) {
+    toSign.api_access = { version: api_access.version }
+  }
+  return jwt.sign(toSign, secret, { expiresIn })
 }
 
 // verify user OTP and sign JWT on success
-const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout }) => {
+const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout, future_access }) => {
   const { api_access, jwt_uuid, prefix } = await redeemAccess({
     email,
     otp,
@@ -159,24 +178,77 @@ const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATO
     product,
   })
 
-  return { token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout }), api_access, prefix }
+  return {
+    token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout, future_access }),
+    api_access,
+    prefix,
+  }
 }
 
 const verifyJWT = token => jwt.verify(token, JWT_SECRET)
 
-// confirm user with supplied JWT payload
+// confirm user with supplied JWT payload vs. user info from DB
 const confirmUser = async ({ email, api_access, jwt_uuid, reset_uuid, product }) => {
-  const userInfo = await getUserInfo({ email, product })
+  const userInfo = await getUserInfo({ email, product }) // TODO: remove `product` when v1 `access` is universal
   const { api_access: _access, jwt_uuid: _uuid } = userInfo
-  // confirm both JWT UUID and api_access integrity
-  if (jwt_uuid !== _uuid || !isEqual(_access, api_access)) {
-    throw new AuthorizationError(`Token payload no longer valid for user ${email}`)
+  // confirm JWT UUID integrity
+  if (jwt_uuid !== _uuid) {
+    throw new AuthorizationError(`Invalid UUID for user ${email}`)
+  }
+  // legacy v0 `access` system check
+  if (!_access.version && !isEqual(_access, api_access)) {
+    throw new AuthorizationError(`Invalid v0 access for user ${email}`)
   }
   if (reset_uuid) {
-    const uuid = await _resetUUID({ email })
-    return { ...userInfo, jwt_uuid: uuid }
+    const jwt_uuid = await _resetUUID({ email })
+    return { ...userInfo, jwt_uuid }
   }
   return userInfo
+}
+
+const getUserAccess = async ({ user, token, light, reset_uuid, targetProduct, forceLight = false, allowLight = false }) => {
+
+  // preliminary jwt verify
+  user = user || verifyJWT(token)
+
+  // payload fields existence check
+  const fields = ['email', 'api_access', 'jwt_uuid']
+  if (!fields.every(k => k in user)) {
+    throw new AuthorizationError('JWT missing required fields in payload')
+  }
+
+  // product check
+  // set product to atom if missing from jwt or falsy for backward compatibility
+  // TODO: deprecated, remove when v1 `access` is universal
+  user.product = user.product || PRODUCT_ATOM
+  if (targetProduct){
+    const safeTargetProduct = targetProduct.toLowerCase()
+    if (safeTargetProduct !== 'all' && user.product !== safeTargetProduct) {
+      throw new AuthorizationError('JWT not valid for this resource')
+    }
+    // check accesses relative to product embedded in jwt when query param 'product' === 'all'
+    // TODO: remove when v1 `access` is universal
+    user.product = safeTargetProduct === 'all' ? user.product : safeTargetProduct
+  }
+
+  // force light mode if user.prefix is PREFIX_MOBILE_SDK
+  if (
+    typeof forceLight === 'function' ? forceLight(user) : forceLight
+    || (
+      typeof allowLight === 'function' ? allowLight(user) : allowLight
+      && ['1', 'true'].includes((light || '').toLowerCase()) 
+    )|| user.prefix === PREFIX_MOBILE_SDK
+  ) {
+    // TODO: for v1+ `access` system, light check means no understanding of user.api_access
+    return { ...user, light: true }
+    
+  }
+  // confirm against DB user data and return the DB version (for v1+ `access` system)
+  user = await  confirmUser({
+    ...user,
+    reset_uuid: ['1', 'true'].includes((reset_uuid || '').toLowerCase()),
+  })
+  return { ...user, light: false }
 }
 
 module.exports = {
@@ -187,4 +259,5 @@ module.exports = {
   confirmUser,
   getUserInfo,
   isPrivilegedUser,
+  getUserAccess,
 }

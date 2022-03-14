@@ -35,18 +35,18 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
       redirect: decodeURIComponent(redirect || `${origin}/verify`),
       zone: decodeURIComponent(zone || 'utc'),
       product: product.toLowerCase(),
-      nolink
+      nolink,
     })
 
 
-    if (process.env.STAGE === 'local') { 
+    if (process.env.STAGE === 'local') {
       if (!deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
         throw new InternalServerError('Something went wrong sending the passcode.')
       }
       return res.json({
         message: `Local keywarden - OTP sent via Ethereal to ${deliveryInfo.accepted[0]}`,
         user: deliveryInfo.accepted[0],
-        etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo)
+        etherealUrl: nodemailer.getTestMessageUrl(deliveryInfo),
       })
     }
     return res.json({
@@ -64,13 +64,14 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
 // GET /verify
 router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
   try {
-    const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout } = req.query
+    const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout, future_access } = req.query
     const { token, api_access, prefix } = await verifyOTP({
       email,
       otp,
       reset_uuid: ['1', 'true'].includes(reset_uuid),
       product: product.toLowerCase(),
       timeout: parseInt(timeout) || undefined,
+      future_access: ['1', 'true'].includes(future_access),
     })
     return res.json({
       message: `User ${email} verified, please store and use the token responsibly`,
@@ -78,8 +79,8 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
       token,
       access: {
         ...api_access,
-        prefix
-      }
+        prefix,
+      },
     })
   } catch (err) {
     if (err instanceof APIError) {
@@ -101,7 +102,7 @@ router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
     access: {
       ...api_access,
       prefix,
-    }
+    },
   })
 })
 
@@ -111,7 +112,7 @@ router.get(
   confirmed({ forceLight: ({ prefix }) => prefix === PREFIX_MOBILE_SDK }),
   async (req, res, next) => {
     try {
-      const { query: { newProduct, timeout } } = req
+      const { query: { newProduct, timeout, future_access } } = req
       let { userInfo } = req
       const { email, light, product, prefix } = userInfo
       const safeNewProduct = newProduct ? newProduct.toLowerCase() : undefined
@@ -123,8 +124,8 @@ router.get(
           product: safeNewProduct && prefix !== PREFIX_MOBILE_SDK ? safeNewProduct : product,
         })
       }
-    
-      const token = signJWT(userInfo, { timeout })
+
+      const token = signJWT(userInfo, { timeout, future_access: ['1', 'true'].includes(future_access) })
       const { api_access } = userInfo
 
       return res.json({
@@ -134,7 +135,7 @@ router.get(
         access: {
           ...api_access,
           prefix,
-        }
+        },
       })
     } catch (err) {
       if (err instanceof APIError) {

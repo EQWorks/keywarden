@@ -15,8 +15,8 @@ module.exports.sendMail = async message => {
       port: 587,
       auth: {
         user: testSender.user,
-        pass: testSender.pass
-      }
+        pass: testSender.pass,
+      },
     })
   }
   else {

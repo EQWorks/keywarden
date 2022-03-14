@@ -26,7 +26,7 @@ redisClient.defineCommand('getOrSet', {
 
     -- otherwise return key
     return {redis.call('GET', KEYS[1]), ttl}
-  `
+  `,
 })
 
 /**
@@ -41,7 +41,7 @@ redisClient.defineCommand('getOrSet', {
  * @return {Promise<{tuk: string, ttl: number}>} TTL expressed as time since unix epoch in
  * milliseconds or -1 if evergreen
  */
-const getOrSetTUK = async ({ email, set, minTTL, resetTTL}) => {
+const getOrSetTUK = async ({ email, set, minTTL, resetTTL }) => {
   const [tuk, ttl] = await redisClient.getOrSet(`keywarden-otp-${email}`, set, minTTL, resetTTL)
   return { tuk, ttl: ttl > 0 ? Date.now() + ttl : ttl }
 }
@@ -135,5 +135,5 @@ const redeemOTP = async ({ otp, email, secret, length = 6 }) => {
 
 module.exports = {
   claimOTP,
-  redeemOTP
+  redeemOTP,
 }

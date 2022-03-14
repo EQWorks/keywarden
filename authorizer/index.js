@@ -1,5 +1,5 @@
-const { verifyJWT, confirmUser } = require('../modules/auth')
-const { PREFIX_MOBILE_SDK, PREFIX_PUBLIC, PRODUCT_ATOM } = require('../constants')
+const { getUserAccess } = require('../modules/auth')
+const { PREFIX_PUBLIC } = require('../constants')
 const { APIError } = require('../modules/errors')
 
 
@@ -13,46 +13,24 @@ const generateAuthPolicy = (resource, proceed = false, access = {}) => {
         Action: 'execute-api:Invoke',
         Effect: proceed ? 'Allow' : 'Deny',
         Resource: resource,
-      }]
+      }],
     },
-    context: { access: JSON.stringify(access) }
+    context: { access: JSON.stringify(access) },
   }
-}
-
-// throws if faillure
-const getUserAccess = async (token) => {
-  // preliminary jwt verify
-  const access = verifyJWT(token)
-
-  // set product to atom if missing from jwt or falsy for backward compatibility
-  access.product = access.product || PRODUCT_ATOM
-
-  // payload fields existence check
-  if (['email', 'api_access', 'jwt_uuid'].some(field => !(field in access))) {
-    throw new APIError({ message: 'JWT missing required fields in payload', statusCode: 400 })
-  }
-
-  // light check for mobile SDK
-  if (access.prefix === PREFIX_MOBILE_SDK) {
-    return access
-  }
-
-  // check that accesses and uuid have not changed for user
-  await confirmUser(access)
-
-  return access
 }
 
 // generates a generic access object with public permissions
-const genPublicAccess = (id) => ({
-  email: id,
+const genPublicAccess = (email) => ({
+  email,
   prefix: PREFIX_PUBLIC,
+  // TODO: increment `version` and remove other fields when v1 `access` is universal
   api_access: {
+    version: 0,
     wl: [],
     customers: [],
     read : 0,
     write : 0,
-  }
+  },
 })
 
 // confirms that token matches 'public' token pattern
@@ -77,7 +55,7 @@ module.exports.handler = async ({ authorizationToken: token, methodArn } = {}) =
       return generateAuthPolicy(rootResource, true, publicAccess)
     }
 
-    const userAccess = await getUserAccess(token)
+    const userAccess = await getUserAccess({ token })
     return generateAuthPolicy(rootResource, true, userAccess)
 
   } catch (err) {

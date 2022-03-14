@@ -13,7 +13,7 @@ const sentry = (() => {
       debug: STAGE === 'local',
       dsn: SENTRY_URL,
       release: KEYWARDEN_VER,
-      environment: STAGE
+      environment: STAGE,
     })
   
     // middleware to start monitoring request
