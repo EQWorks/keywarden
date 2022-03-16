@@ -17,10 +17,10 @@ const _checkEmpty = ({ ...params }) => {
   }
 }
 
-const selectUser = async ({ email, selects, conditions=[] }) => {
+const selectUser = async ({ email, selects, conditions = [] }) => {
   // returns user data, or undefined if user not found
   _checkEmpty({ email })
-  const { rows=[] } = await rPool.query(`
+  const { rows = [] } = await rPool.query(`
     SELECT ${selects.join(',')}
     FROM equsers
     WHERE email = $1
