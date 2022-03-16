@@ -1,6 +1,6 @@
-const { verifyJWT, getUserAccess } = require('../modules/auth')
+const { getUserAccess } = require('../modules/auth')
 const { PRODUCT_ATOM } = require('../constants')
-const { AuthorizationError, APIError, InternalServerError, LOG_LEVEL_ERROR } = require('../modules/errors')
+const { APIError, InternalServerError } = require('../modules/errors')
 const moment = require('moment-timezone')
 
 
@@ -22,14 +22,7 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
     const { light, reset_uuid, product: targetProduct = PRODUCT_ATOM } = req.query
     const token = req.get('eq-api-jwt')
 
-    let user
-    // preliminary jwt verify
-    try {
-      user = verifyJWT(token)
-    } catch (err) {
-      // wrap error and up log level so it is logged to Sentry
-      throw new AuthorizationError.fromError(err, { message: `Invalid JWT: ${token}`, logLevel: LOG_LEVEL_ERROR })
-    }
+    let user = await getUserAccess({ token, light, reset_uuid, targetProduct, forceLight, allowLight })
 
     // determine JWT TTL
     const ttl = 'exp' in user ? 1000 * user.exp - Date.now() : -1
@@ -37,9 +30,6 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
       millis: ttl,
       friendly: moment.duration(ttl).humanize(),
     }
-
-    user = await getUserAccess({ user, light, reset_uuid, targetProduct, forceLight, allowLight })
-
     req.userInfo = user
     return next()
   } catch (err) {

@@ -11,7 +11,7 @@ const isEqual = require('lodash.isequal')
 const { sendMail, magicLinkHTML, otpText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
-const { AuthorizationError, APIError } = require('./errors')
+const { AuthorizationError, APIError, LOG_LEVEL_ERROR } = require('./errors')
 const { PREFIX_APP_REVIEWER, PREFIX_DEV, PREFIX_MOBILE_SDK, PRODUCT_ATOM, PRODUCT_LOCUS } = require('../constants.js')
 
 
@@ -40,8 +40,9 @@ const isPrivilegedUser = (email, prefix, api_access) => {
 
 const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   // returns user info
-  const selects = ['prefix', 'jwt_uuid', 'client', 'active', 'access', PRODUCT_ATOM, PRODUCT_LOCUS]
-  const user = await selectUser({ email, selects })
+  const selects = ['prefix', 'jwt_uuid', 'client', 'access', PRODUCT_ATOM, PRODUCT_LOCUS]
+  const conditions = ["active = B'1'"]
+  const user = await selectUser({ email, selects, conditions })
 
   if (!user) {
     throw new APIError({
@@ -54,7 +55,9 @@ const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   const productAccess = Object.keys(user[product] || {}).length ? user[product] : user[PRODUCT_ATOM]
   // TODO: progressive transition to new `access` system (see comments on vX per relevant line)
   return {
-    ...user, // `user.prefix` could still be used for special cases: internal+ (-1/-1 client) and mobile-sdk tokens
+    // `prefix` could still be used for special cases: internal+ (-1/-1 client) and mobile-sdk tokens
+    prefix: user.prefix,
+    jwt_uuid: user.jwt_uuid,
     email,
     product, // v0; deprecated in v1+
     api_access: {
@@ -182,6 +185,7 @@ const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATO
     token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout, future_access }),
     api_access,
     prefix,
+    product,
   }
 }
 
@@ -206,10 +210,16 @@ const confirmUser = async ({ email, api_access, jwt_uuid, reset_uuid, product })
   return userInfo
 }
 
-const getUserAccess = async ({ user, token, light, reset_uuid, targetProduct, forceLight = false, allowLight = false }) => {
-
+// token is required
+const getUserAccess = async ({ token, light, reset_uuid, targetProduct, forceLight = false, allowLight = false }) => {
   // preliminary jwt verify
-  user = user || verifyJWT(token)
+  let user
+  try {
+    user = verifyJWT(token)
+  } catch (err) {
+    // wrap error and up log level so it is logged to Sentry
+    throw AuthorizationError.fromError(err, { message: `Invalid JWT: ${token}`, logLevel: LOG_LEVEL_ERROR })
+  }
 
   // payload fields existence check
   const fields = ['email', 'api_access', 'jwt_uuid']
@@ -239,12 +249,13 @@ const getUserAccess = async ({ user, token, light, reset_uuid, targetProduct, fo
       && ['1', 'true'].includes((light || '').toLowerCase()) 
     )|| user.prefix === PREFIX_MOBILE_SDK
   ) {
+    user.api_access.version = user.api_access.version || 0
     // TODO: for v1+ `access` system, light check means no understanding of user.api_access
     return { ...user, light: true }
     
   }
   // confirm against DB user data and return the DB version (for v1+ `access` system)
-  user = await  confirmUser({
+  user = await confirmUser({
     ...user,
     reset_uuid: ['1', 'true'].includes((reset_uuid || '').toLowerCase()),
   })

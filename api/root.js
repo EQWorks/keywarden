@@ -38,7 +38,6 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
       nolink,
     })
 
-
     if (process.env.STAGE === 'local') {
       if (!deliveryInfo.response.startsWith('2')) { // looking for SMTP response code 200 or 250
         throw new InternalServerError('Something went wrong sending the passcode.')
@@ -65,7 +64,7 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
 router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
   try {
     const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout, future_access } = req.query
-    const { token, api_access, prefix } = await verifyOTP({
+    const { token, api_access, prefix, product: jwtProduct } = await verifyOTP({
       email,
       otp,
       reset_uuid: ['1', 'true'].includes(reset_uuid),
@@ -76,7 +75,9 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
     return res.json({
       message: `User ${email} verified, please store and use the token responsibly`,
       email,
+      user: email, // for consistency with other routes
       token,
+      product: jwtProduct,
       access: {
         ...api_access,
         prefix,
@@ -92,7 +93,7 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
 
 // GET /confirm
 router.get('/confirm', confirmed({ allowLight: true }), (req, res) => {
-  const { query: { product }, ttl, userInfo: { email: user, light, api_access, prefix } } = req
+  const { ttl, userInfo: { email: user, light, api_access, prefix, product } } = req
   return res.json({
     message: `Token confirmed for user ${user}`,
     user,
@@ -132,6 +133,7 @@ router.get(
         message: `Token refreshed for user ${email}, please store and use the token responsibly`,
         token,
         user: email,
+        product: userInfo.product,
         access: {
           ...api_access,
           prefix,
@@ -185,6 +187,7 @@ router.get('/access', confirmed(), (req, res, next) => {
     })
     return res.json({
       email,
+      user: email,
       prefix,
       wl,
       customers,
