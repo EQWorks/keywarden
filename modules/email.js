@@ -1,11 +1,11 @@
 const nodemailer = require('nodemailer')
-const AWS = require('aws-sdk')
+const AWS = require('@aws-sdk/client-ses')
 
 
 module.exports.sendMail = async message => {
   let transport
-  // if we are in a local environment, bypass SES and bypass requested recipient in favour of ethereal.email generated accounts 
-  if (process.env.STAGE === 'local') { 
+  // if we are in a local environment, bypass SES and bypass requested recipient in favour of ethereal.email generated accounts
+  if (process.env.STAGE === 'local') {
     let testSender = await nodemailer.createTestAccount()
     let testRecipient = await nodemailer.createTestAccount()
     message.from = testSender.user
