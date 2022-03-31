@@ -2,11 +2,31 @@ const { PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL, PREFIX_DEV, PREFIX_TESTER 
 const { AuthorizationError } = require('./errors')
 
 
+const checkPolicies = ({ targetAccess, access }) => {
+  let pass = false
+  if (targetAccess.length === 0) { // backward compatibility
+    pass = true
+  }
+  if (targetAccess.includes('*')) { // omni-wildcard
+    pass = true
+  }
+  // exact string match policies
+  pass = targetAccess.every((p) => access.includes(p))
+  // potentially wildcard policies
+  return pass || targetAccess.every((tp) => {
+    const [targetPrefix, targetScope, targetRole] = tp.split(':') // e.g.: "cox:9:gm"
+    return access.some((p) => {
+      const [prefix, scope, role] = p.split(':') // e.g.: "cox:9:gm"
+      return prefix === targetPrefix && (targetScope === '*' || scope === targetScope) && (targetRole === '*' || role === targetRole)
+    })
+  })
+}
+
 const checkAccess = ({ targetAccess, access, name }) => {
   let pass
-  if (name === 'policies'){
-    pass = targetAccess.every((policy) => access.includes(policy))
-  }else{
+  if (name === 'policies') {
+    pass = checkPolicies({ targetAccess, access })
+  } else {
     pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
   }
   if (pass) {
