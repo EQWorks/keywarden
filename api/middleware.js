@@ -25,10 +25,17 @@ const confirmed = ({ forceLight = false, allowLight = false } = {}) => async (re
     let user = await getUserAccess({ token, light, reset_uuid, targetProduct, forceLight, allowLight })
 
     // determine JWT TTL
-    const ttl = 'exp' in user ? 1000 * user.exp - Date.now() : -1
-    req.ttl = {
-      millis: ttl,
-      friendly: moment.duration(ttl).humanize(),
+    if ('exp' in user) {
+      const millis = 1000 * user.exp - Date.now()
+      req.ttl = {
+        millis,
+        friendly: moment.duration(millis).humanize(),
+      }
+    } else {
+      req.ttl = {
+        millis: -1,
+        friendly: 'N/A',
+      }
     }
     req.userInfo = user
     return next()
