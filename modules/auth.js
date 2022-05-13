@@ -231,7 +231,7 @@ const getUserAccess = async ({ token, light, reset_uuid, targetProduct, forceLig
   // set product to atom if missing from jwt or falsy for backward compatibility
   // TODO: deprecated, remove when v1 `access` is universal
   user.product = user.product || PRODUCT_ATOM
-  if (targetProduct){
+  if (targetProduct) {
     const safeTargetProduct = targetProduct.toLowerCase()
     if (safeTargetProduct !== 'all' && user.product !== safeTargetProduct) {
       throw new AuthorizationError('JWT not valid for this resource')

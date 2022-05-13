@@ -75,7 +75,7 @@ const fullCheck = ({ target, me }) => {
     })
   }
   // check policies
-  if (access.version){ // for backward compatibility
+  if (access.version) { // for backward compatibility
     checkPolicies({ targetPolicies, policies })
   }
   // check clients

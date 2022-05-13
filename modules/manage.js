@@ -53,7 +53,7 @@ const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
 const BASE_SELECTS = ['email', 'prefix', 'client', 'info', 'access', 'active']
 // list users that the given user (email) has access to
 const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
-  if (api_access.version){
+  if (api_access.version) {
     checkPolicies({ targetPolicies: [USER_POLICIES_READ], policies: api_access.policies })
   }
   const conditions = _prepareConditions({ prefix, api_access, product })
@@ -84,7 +84,7 @@ const _canManage = ({ userInfo, prefix, api_access, product, policies: targetPol
     prefix: targetPrefix,
   } = userInfo
   let targetAccess
-  if (userInfo.access && userInfo.access.version){
+  if (userInfo.access && userInfo.access.version) {
     // the first element of the policies array is the product policy - '<product>:<read>:<write>' (ex: 'atom:-1:-1')
     const [, read, write] = userInfo.access.policies[0].split(':')
     targetAccess = { read, write }
