@@ -154,7 +154,7 @@ router.get('/access', confirmed(), (req, res, next) => {
     // extract access information from DB checked JWT
     const {
       prefix,
-      api_access: { wl, customers, ...access },
+      api_access: { wl, customers, policies, ...access },
       email,
     } = req.userInfo
     // extract target access information
@@ -174,6 +174,7 @@ router.get('/access', confirmed(), (req, res, next) => {
           ...targetAccess,
           prefix: targetPrefix,
         },
+        policies: targetAccess.policies,
         clients: {
           wl: targetWL.split(',').filter(v => v),
           customers: targetCustomers.split(',').filter(v => v),
@@ -182,6 +183,7 @@ router.get('/access', confirmed(), (req, res, next) => {
       me: {
         prefix,
         access,
+        policies,
         clients: { wl, customers },
       },
     })
@@ -191,6 +193,7 @@ router.get('/access', confirmed(), (req, res, next) => {
       prefix,
       wl,
       customers,
+      policies,
       ...access,
     })
   } catch (err) {

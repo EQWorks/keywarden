@@ -1,14 +1,18 @@
 const { PREFIX_WL, PREFIX_CUSTOMERS, PREFIX_INTERNAL, PREFIX_DEV, PREFIX_TESTER } = require('../constants')
 const { AuthorizationError } = require('./errors')
 
+const checkPolicies = ({ targetPolicies = [], policies = [] }) => {
+  if (!targetPolicies.length) {
+    return
+  }
+  const pass = policies.some((p) => p.match(targetPolicies))
+  if (!pass) {
+    throw new AuthorizationError('Policies check failed')
+  }
+}
 
 const checkAccess = ({ targetAccess, access, name }) => {
-  let pass
-  if (name === 'policies'){
-    pass = targetAccess.every((policy) => access.includes(policy))
-  }else{
-    pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
-  }
+  const pass = access === -1 || (targetAccess !== -1 && targetAccess <= access)
   if (pass) {
     return
   }
@@ -56,23 +60,23 @@ const fullCheck = ({ target, me }) => {
   const {
     prefix: targetPrefix,
     access: targetAccess,
+    policies: targetPolicies,
     clients: targetClients,
   } = target
-  const { prefix, access, clients } = me
+  const { prefix, access, policies, clients } = me
   // prefix check
   checkPrefix({ targetPrefix, prefix })
   // numerical access check
   for (const name of Object.keys(targetAccess)) {
-    let accessCheck = {
+    checkAccess({
       targetAccess: parseInt(targetAccess[name]) || 0,
       access: parseInt(access[name]) || 0,
       name,
-    }
-    if (name === 'policies'){
-      accessCheck['targetAccess'] = targetAccess[name] || []
-      accessCheck['access'] = access[name] || []
-    }
-    checkAccess(accessCheck)
+    })
+  }
+  // check policies
+  if (access.version) { // for backward compatibility
+    checkPolicies({ targetPolicies, policies })
   }
   // check clients
   for (const name of Object.keys(targetClients)) {
@@ -85,6 +89,7 @@ const fullCheck = ({ target, me }) => {
 }
 
 module.exports = {
+  checkPolicies,
   checkAccess,
   checkPrefix,
   checkClient,
