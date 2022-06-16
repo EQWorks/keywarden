@@ -19,10 +19,10 @@ const {
 } = require('../constants')
 
 
-const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
+const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM, active = 'all' }) => {
   // derive select conditions based on prefix and api_access
   const { wl = [], customers = [], read = 0, write = 0 } = api_access
-  const conditions = []
+  const conditions = ['client IS NOT NULL'] // soft deleted users are not returned
   if (prefix === PREFIX_WL) {
     if (wl !== -1) {
       conditions.push(`client->'wl' <@ '${JSON.stringify(wl)}'::jsonb`)
@@ -47,16 +47,21 @@ const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
       AND coalesce((${product}->>'write')::integer, 0) <= ${write}
     )`)
   }
+  if (['true', '1'].includes(active.toLowerCase())) {
+    conditions.push("active = '1'")
+  }else if (['false', '0'].includes(active.toLowerCase())) {
+    conditions.push("active = '0'")
+  }
   return conditions
 }
 
 const BASE_SELECTS = ['email', 'prefix', 'client', 'info', 'access', 'active']
 // list users that the given user (email) has access to
-const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
+const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM, active }) => {
   if (api_access.version) {
     checkPolicies({ targetPolicies: [USER_POLICIES_READ], policies: api_access.policies })
   }
-  const conditions = _prepareConditions({ prefix, api_access, product })
+  const conditions = _prepareConditions({ prefix, api_access, product, active })
   const selects = [...BASE_SELECTS, product]
   return listUsers({ selects, conditions })
 }
@@ -77,29 +82,24 @@ const getUser = async ({ email, prefix, api_access, product = PRODUCT_ATOM }) =>
   return user
 }
 
-const _canManage = ({ userInfo, prefix, api_access, product, policies: targetPolicies = [] }) => {
-  // target userInfo
-  const {
-    client: { wl: targetWL, customers: targetCustomers },
-    prefix: targetPrefix,
-  } = userInfo
+const _canManage = ({ userInfo, prefix, api_access, product, policies: targetPolicies = [] }) => {  
   let targetAccess
   if (userInfo.access && userInfo.access.version) {
     // the first element of the policies array is the product policy - '<product>:<read>:<write>' (ex: 'atom:-1:-1')
     const [, read, write] = userInfo.access.policies[0].split(':')
     targetAccess = { read, write }
   }else{
-    targetAccess = userInfo[product]
+    targetAccess = userInfo[product] || {}
   }
 
   // requesting user
   const { wl, customers, policies, ...access } = api_access
   fullCheck({
     target: {
-      prefix: targetPrefix,
+      prefix: userInfo.prefix,
       access: targetAccess,
       policies: targetPolicies,
-      clients: { wl: targetWL, customers: targetCustomers },
+      clients: userInfo.client || {},
     },
     me: {
       prefix,
@@ -122,9 +122,21 @@ const editUser = ({ userInfo, prefix, api_access, product = PRODUCT_ATOM }) => {
 }
 
 // delete a user
-const removeUser = ({ userInfo, prefix, api_access }) => {
+const removeUser = ({ userInfo, prefix, api_access, soft }) => {
   _canManage({ userInfo, prefix, api_access, policies: [USER_POLICIES_WRITE] })
-  return deleteUser(userInfo.email)
+  if (!soft) {
+    return deleteUser(userInfo)
+  }else{
+    return updateUser({ 
+      email: userInfo.email,
+      prefix: 'customers',
+      jwt_uuid: null,
+      client: null,
+      atom: { read: 10, write: 0 },
+      active: 0,
+      access: null,
+    })
+  }
 }
 
 // deactivate a user (special case editUser)
