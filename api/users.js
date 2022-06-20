@@ -91,13 +91,13 @@ router.put('/deactivate', confirmed(), (req, res, next) => {
 // delete
 router.delete('/', confirmed(), (req, res, next) => {
   const { userInfo: { prefix, api_access } = {} } = req
-  const { product, user: email, soft } = req.query
+  const { product, user: email } = req.query
   getUser({ email, prefix, api_access, product })
     .then((userInfo) => {
-      return removeUser({ prefix, api_access, userInfo, soft })
+      return removeUser({ prefix, api_access, userInfo })
     })
     .then(() => {
-      return res.json({ message: `User ${email} has been${soft?' soft':''} deleted` })
+      return res.json({ message: `User ${email} has been deleted` })
     })
     .catch(next)
 })

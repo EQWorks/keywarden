@@ -6,7 +6,6 @@ const {
   selectUser,
   insertUser,
   updateUser,
-  deleteUser,
 } = require('./db')
 const { fullCheck, checkPolicies } = require('./access')
 const { APIError } = require('./errors')
@@ -122,21 +121,17 @@ const editUser = ({ userInfo, prefix, api_access, product = PRODUCT_ATOM }) => {
 }
 
 // delete a user
-const removeUser = ({ userInfo, prefix, api_access, soft }) => {
+const removeUser = ({ userInfo, prefix, api_access }) => {
   _canManage({ userInfo, prefix, api_access, policies: [USER_POLICIES_WRITE] })
-  if (!soft) {
-    return deleteUser(userInfo)
-  }else{
-    return updateUser({ 
-      email: userInfo.email,
-      prefix: 'customers',
-      jwt_uuid: null,
-      client: null,
-      atom: { read: 10, write: 0 },
-      active: 0,
-      access: null,
-    })
-  }
+  return updateUser({ 
+    email: userInfo.email,
+    prefix: 'customers',
+    jwt_uuid: null,
+    client: null,
+    atom: { read: 10, write: 0 },
+    active: 0,
+    access: null,
+  })
 }
 
 // deactivate a user (special case editUser)
