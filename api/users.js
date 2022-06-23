@@ -30,8 +30,8 @@ router.get('/', hasQueryParams('user'), confirmed(), (req, res, next) => {
 // GET /users/list
 router.get('/list', confirmed(), (req, res, next) => {
   const { userInfo } = req
-  const { product, active } = req.query
-  getUsers({ ...userInfo, product, active })
+  const { product, active, deleted } = req.query
+  getUsers({ ...userInfo, product, active, deleted })
     .then(({ users }) => res.json(users))
     .catch(next)
 })

@@ -18,10 +18,10 @@ const {
 } = require('../constants')
 
 
-const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM, active = 'all' }) => {
+const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM, active = 'all', deleted }) => {
   // derive select conditions based on prefix and api_access
   const { wl = [], customers = [], read = 0, write = 0 } = api_access
-  const conditions = ['client IS NOT NULL'] // soft deleted users are not returned
+  const conditions = []
   if (prefix === PREFIX_WL) {
     if (wl !== -1) {
       conditions.push(`client->'wl' <@ '${JSON.stringify(wl)}'::jsonb`)
@@ -51,16 +51,20 @@ const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM, active
   }else if (['false', '0'].includes(active.toLowerCase())) {
     conditions.push("active = '0'")
   }
+  // if deleted is false, exclude deleted users
+  if (!deleted || ['false', '0'].includes(deleted.toLowerCase())) {
+    conditions.push('client IS NOT NULL')
+  }
   return conditions
 }
 
 const BASE_SELECTS = ['email', 'prefix', 'client', 'info', 'access', 'active']
 // list users that the given user (email) has access to
-const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM, active }) => {
+const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM, active, deleted }) => {
   if (api_access.version) {
     checkPolicies({ targetPolicies: [USER_POLICIES_READ], policies: api_access.policies })
   }
-  const conditions = _prepareConditions({ prefix, api_access, product, active })
+  const conditions = _prepareConditions({ prefix, api_access, product, active, deleted })
   const selects = [...BASE_SELECTS, product]
   return listUsers({ selects, conditions })
 }
