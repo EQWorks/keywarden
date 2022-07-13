@@ -30,8 +30,8 @@ router.get('/', hasQueryParams('user'), confirmed(), (req, res, next) => {
 // GET /users/list
 router.get('/list', confirmed(), (req, res, next) => {
   const { userInfo } = req
-  const { product } = req.query
-  getUsers({ ...userInfo, product })
+  const { product, active, deleted } = req.query
+  getUsers({ ...userInfo, product, active, deleted })
     .then(({ users }) => res.json(users))
     .catch(next)
 })
@@ -97,7 +97,7 @@ router.delete('/', confirmed(), (req, res, next) => {
       return removeUser({ prefix, api_access, userInfo })
     })
     .then(() => {
-      return res.json({ message: `User ${email} deleted` })
+      return res.json({ message: `User ${email} has been deleted` })
     })
     .catch(next)
 })

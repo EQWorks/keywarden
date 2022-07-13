@@ -6,7 +6,6 @@ const {
   selectUser,
   insertUser,
   updateUser,
-  deleteUser,
 } = require('./db')
 const { fullCheck, checkPolicies } = require('./access')
 const { APIError } = require('./errors')
@@ -19,7 +18,7 @@ const {
 } = require('../constants')
 
 
-const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
+const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM, active = 'all', deleted }) => {
   // derive select conditions based on prefix and api_access
   const { wl = [], customers = [], read = 0, write = 0 } = api_access
   const conditions = []
@@ -47,16 +46,25 @@ const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
       AND coalesce((${product}->>'write')::integer, 0) <= ${write}
     )`)
   }
+  if (['true', '1'].includes(active.toLowerCase())) {
+    conditions.push("active = '1'")
+  }else if (['false', '0'].includes(active.toLowerCase())) {
+    conditions.push("active = '0'")
+  }
+  // if deleted is false, exclude deleted users
+  if (!deleted || ['false', '0'].includes(deleted.toLowerCase())) {
+    conditions.push('client IS NOT NULL')
+  }
   return conditions
 }
 
 const BASE_SELECTS = ['email', 'prefix', 'client', 'info', 'access', 'active']
 // list users that the given user (email) has access to
-const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM }) => {
+const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM, active, deleted }) => {
   if (api_access.version) {
     checkPolicies({ targetPolicies: [USER_POLICIES_READ], policies: api_access.policies })
   }
-  const conditions = _prepareConditions({ prefix, api_access, product })
+  const conditions = _prepareConditions({ prefix, api_access, product, active, deleted })
   const selects = [...BASE_SELECTS, product]
   return listUsers({ selects, conditions })
 }
@@ -77,29 +85,24 @@ const getUser = async ({ email, prefix, api_access, product = PRODUCT_ATOM }) =>
   return user
 }
 
-const _canManage = ({ userInfo, prefix, api_access, product, policies: targetPolicies = [] }) => {
-  // target userInfo
-  const {
-    client: { wl: targetWL, customers: targetCustomers },
-    prefix: targetPrefix,
-  } = userInfo
+const _canManage = ({ userInfo, prefix, api_access, product, policies: targetPolicies = [] }) => {  
   let targetAccess
   if (userInfo.access && userInfo.access.version) {
     // the first element of the policies array is the product policy - '<product>:<read>:<write>' (ex: 'atom:-1:-1')
     const [, read, write] = userInfo.access.policies[0].split(':')
     targetAccess = { read, write }
   }else{
-    targetAccess = userInfo[product]
+    targetAccess = userInfo[product] || {}
   }
 
   // requesting user
   const { wl, customers, policies, ...access } = api_access
   fullCheck({
     target: {
-      prefix: targetPrefix,
+      prefix: userInfo.prefix,
       access: targetAccess,
       policies: targetPolicies,
-      clients: { wl: targetWL, customers: targetCustomers },
+      clients: userInfo.client || {},
     },
     me: {
       prefix,
@@ -124,7 +127,15 @@ const editUser = ({ userInfo, prefix, api_access, product = PRODUCT_ATOM }) => {
 // delete a user
 const removeUser = ({ userInfo, prefix, api_access }) => {
   _canManage({ userInfo, prefix, api_access, policies: [USER_POLICIES_WRITE] })
-  return deleteUser(userInfo.email)
+  return updateUser({ 
+    email: userInfo.email,
+    prefix: 'customers',
+    jwt_uuid: null,
+    client: null,
+    atom: { read: 10, write: 0 },
+    active: 0,
+    access: null,
+  })
 }
 
 // deactivate a user (special case editUser)
