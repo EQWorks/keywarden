@@ -30,7 +30,12 @@ const isPrivilegedUser = (email, prefix, api_access) => {
   // - or a 'mobilesdk' prefix
   switch(prefix) {
   case PREFIX_DEV:
-    return Object.values(api_access).every(v => v === -1) && email.endsWith('@eqworks.com')
+    return Object.entries(api_access).every(([k, v]) => {
+      if (k === 'version') {
+        return true
+      }
+      return v === -1
+    }) && email.endsWith('@eqworks.com')
   case PREFIX_MOBILE_SDK:
     return true
   default:
