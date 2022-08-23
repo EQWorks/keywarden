@@ -164,9 +164,15 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
 
 const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET, future_access } = {}) => {
   // timeout in seconds
-  const expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
+  let expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
     ? parseInt(timeout) < 0 ? '9999 years' : timeout // never expire if timeout is negative
     : JWT_TTL
+  
+  // numeric timeout if no units
+  const m = expiresIn.match(/[a-zA-Z]/)
+  if (!m) {
+    expiresIn = parseInt(expiresIn)
+  }
 
   // TODO: remove `product` from JWT when v1 `access` is stable/universal
   const toSign = { email, api_access, jwt_uuid, prefix, product }
