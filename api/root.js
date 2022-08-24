@@ -69,7 +69,7 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
       otp,
       reset_uuid: ['1', 'true'].includes(reset_uuid),
       product: product.toLowerCase(),
-      timeout: parseInt(timeout) || undefined,
+      timeout: timeout || undefined,
       future_access: ['1', 'true'].includes(future_access),
     })
     return res.json({

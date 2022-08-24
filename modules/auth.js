@@ -30,7 +30,12 @@ const isPrivilegedUser = (email, prefix, api_access) => {
   // - or a 'mobilesdk' prefix
   switch(prefix) {
   case PREFIX_DEV:
-    return Object.values(api_access).every(v => v === -1) && email.endsWith('@eqworks.com')
+    return Object.entries(api_access).every(([k, v]) => {
+      if (k === 'version') {
+        return true
+      }
+      return v === -1
+    }) && email.endsWith('@eqworks.com')
   case PREFIX_MOBILE_SDK:
     return true
   default:
@@ -157,11 +162,31 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   })
 }
 
+const computeExpiry = (timeout, isPrivilegedUser) => {
+  let expiry = timeout
+
+  // default timeout
+  if (!(timeout && isPrivilegedUser)) {
+    return JWT_TTL
+  }
+  // never expire if timeout is negative
+  if (parseInt(timeout) < 0) {
+    return '9999 years'
+  }
+  // if timeout input is string
+  if (typeof timeout === 'string') {
+    const m = timeout.match(/[a-zA-Z]/)
+    if (!m) {
+      expiry = parseInt(timeout)
+    }
+  }
+
+  return expiry
+}
+
 const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET, future_access } = {}) => {
   // timeout in seconds
-  const expiresIn = timeout && isPrivilegedUser(email, prefix, api_access)
-    ? timeout > 0 ? timeout : '9999 years' // never expire if timeout is negative
-    : JWT_TTL
+  const expiresIn = computeExpiry(timeout, isPrivilegedUser(email, prefix, api_access))
 
   // TODO: remove `product` from JWT when v1 `access` is stable/universal
   const toSign = { email, api_access, jwt_uuid, prefix, product }
