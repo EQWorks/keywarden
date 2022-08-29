@@ -14,6 +14,7 @@ custom:
     - X-Amz-User-Agent
     - eq-api-user
     - eq-api-jwt
+    - eq-api-call-timestamp
   customDomain:
     domainName: 'auth.eqworks.io'
     basePath: '${opt:stage, self:provider.stage}'
