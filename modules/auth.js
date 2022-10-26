@@ -45,7 +45,7 @@ const isPrivilegedUser = (email, prefix, api_access) => {
 
 const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   // returns user info
-  const selects = ['prefix', 'jwt_uuid', 'client', 'access', PRODUCT_ATOM, PRODUCT_LOCUS]
+  const selects = ['prefix', 'jwt_uuid', 'client', 'access', 'info', PRODUCT_ATOM, PRODUCT_LOCUS]
   const conditions = ["active = B'1'"]
   const user = await selectUser({ email, selects, conditions })
 
@@ -66,6 +66,7 @@ const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
     email,
     product, // v0; deprecated in v1+
     api_access: {
+      info: user.info,
       ...user.client, // v0, v1; to be deprecated in v2+
       ...productAccess, // v0; to be deprecated in v1+
       version: 0, // denotes legacy pre-`access` format
