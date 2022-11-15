@@ -67,6 +67,6 @@ jobs:
 
       - name: Notify on release notes update
         if: ${{ success() }}
-        run: notify send "Release notes updated for ${GITHUB_REPOSITORY} ${GITHUB_REF##*/}" --link "https://github.com/EQWorks/${GITHUB_REPOSITORY}/tag/${GITHUB_REF##*/}" --status ${{ job.status }}
+        run: npx @eqworks/notify send "Release notes updated for ${GITHUB_REPOSITORY} ${GITHUB_REF##*/}" --link "https://github.com/EQWorks/${GITHUB_REPOSITORY}/tag/${GITHUB_REF##*/}" --status ${{ job.status }}
         env:
           SLACK_HOOK: ${{ secrets.CD_SLACK_HOOK }}
