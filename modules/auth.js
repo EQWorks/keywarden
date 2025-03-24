@@ -122,7 +122,13 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   sender = sender || 'dev@eqworks.com'
   company = company || 'EQ Works'
 
-  const { prefix: userPrefix } = await getUserInfo({ email: user })
+  const { prefix: userPrefix, api_access } = await getUserInfo({ email: user })
+  // Check if user has access to the requested product
+  if (api_access.version === 2 && userPrefix !== PREFIX_DEV) {
+    if (!api_access.policies.some(policy => policy.split(':')[0] === product)) {
+      throw new AuthorizationError(`User ${user} does not have access to ${product}`)
+    }
+  }
 
   // set otp and ttl (in ms)
   let otp, ttl

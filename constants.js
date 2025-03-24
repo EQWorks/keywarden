@@ -13,6 +13,7 @@ module.exports = {
   // product
   PRODUCT_ATOM: 'atom',
   PRODUCT_LOCUS: 'locus',
+  PRODUCT_CLEARLAKE: 'clearlake',
 
   // user policies
   USER_POLICIES_READ: 'user:read',
