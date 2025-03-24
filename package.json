@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "central auth service",
   "scripts": {
-    "start": "env $(print-env) nodemon app.js",
+    "start": "env $(print-env --api https://portunusapiprod.locus.engineering/env) nodemon app.js",
     "lint": "eslint --ext .js .",
-    "deploy": "env $(print-env) sls deploy"
+    "deploy": "env $(print-env --api https://portunusapiprod.locus.engineering/env) sls deploy"
   },
   "repository": {
     "type": "git",
@@ -35,6 +35,6 @@
     "serverless-domain-manager": "^3.3.1"
   },
   "engines": {
-    "node": "12.x"
+    "node": "20.x"
   }
 }

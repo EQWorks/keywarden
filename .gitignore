@@ -9,3 +9,6 @@ jspm_packages
 
 # IDE config
 .vscode
+
+# macOS
+.DS_Store
