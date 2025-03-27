@@ -36,12 +36,16 @@ jobs:
       - name: Install packages
         run: yarn install --frozen-lockfile
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
       - name: Deploy through serverless
         run: yarn deploy --stage ${STAGE}
         env:
-          # aws creds for deployment
-          AWS_ACCESS_KEY_ID: ${{ secrets.CD_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.CD_AWS_SECRET_ACCESS_KEY }}
           # keywarden API version, passthrough
           KEYWARDEN_VER: ${{ github.sha }}
           # for print-env
