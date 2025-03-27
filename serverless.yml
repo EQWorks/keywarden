@@ -20,7 +20,6 @@ custom:
     basePath: '${opt:stage, self:provider.stage}'
     stage: '${opt:stage, self:provider.stage}'
     certificateName: '*.eqworks.io'
-    createRoute53Record: true
 
 provider:
   name: aws
