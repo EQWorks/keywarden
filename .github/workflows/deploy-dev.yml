@@ -45,7 +45,7 @@ jobs:
           # keywarden API version, passthrough
           KEYWARDEN_VER: ${{ github.sha }}
           # for print-env
-          PORTUNUS_TOKEN: ${{ secrets.CD_PORTUNUS_TOKEN_JWT }}/${{ github.event.repository.name }}/${{ env.STAGE }}
+          PORTUNUS_TOKEN: ${{ secrets.CD_PORTUNUS_ADMIN_JWT }}/${{ github.event.repository.name }}/${{ env.STAGE }}
 
       - name: Notify on deployment status
         if: ${{ always() }}
