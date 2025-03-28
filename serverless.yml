@@ -1,8 +1,5 @@
 service: keywarden
 
-plugins:
-  - serverless-domain-manager
-
 custom:
   # CORS allowed headers
   allowedHeaders:
@@ -15,16 +12,10 @@ custom:
     - eq-api-user
     - eq-api-jwt
     - eq-api-call-timestamp
-  customDomain:
-    domainName: 'auth.eqworks.io'
-    basePath: '${opt:stage, self:provider.stage}'
-    stage: '${opt:stage, self:provider.stage}'
-    certificateName: '*.eqworks.io'
-    createRoute53Record: true
 
 provider:
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs20.x
   timeout: 29
   memorySize: 256
   versionFunctions: false
