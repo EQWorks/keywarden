@@ -12,7 +12,8 @@ const { sendMail, magicLinkHTML, otpText } = require('./email.js')
 const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
 const { AuthorizationError, APIError, LOG_LEVEL_ERROR } = require('./errors')
-const { PREFIX_APP_REVIEWER, PREFIX_DEV, PREFIX_MOBILE_SDK, PRODUCT_ATOM, PRODUCT_LOCUS } = require('../constants.js')
+const { PREFIX_APP_REVIEWER, PREFIX_DEV, PREFIX_MOBILE_SDK, PRODUCT_ATOM, PRODUCT_LOCUS, PRODUCT_CLEARLAKE } = require('../constants.js')
+const { capitalizeFirstLetter } = require('./utils')
 
 
 const {
@@ -117,10 +118,16 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   // get user WL info
   const { rows = [] } = await getUserWL(user)
 
+  const DEFAULT_EMAIL = 'dev@eqworks.com'
+  const productSender = product === PRODUCT_CLEARLAKE 
+    ? (process.env.CLEARLAKE_SENDER || DEFAULT_EMAIL)
+    : DEFAULT_EMAIL
+  const supportEmail = product === PRODUCT_CLEARLAKE
+    ? (process.env.CLEARLAKE_SUPPORT_EMAIL || DEFAULT_EMAIL)
+    : DEFAULT_EMAIL
+  
   // TODO: add logo in when email template has logo
-  let { sender, company } = rows[0] || {}
-  sender = sender || 'dev@eqworks.com'
-  company = company || 'EQ Works'
+  const { sender = productSender, company = 'EQ Works' } = rows[0] || {}
 
   const { prefix: userPrefix, api_access } = await getUserInfo({ email: user })
   // Check if user has access to the requested product
@@ -159,12 +166,12 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
     text: otpText({ otp, ttl, company, product }),
   } : {
     text: otpText({ link, otp, ttl, company, product }),
-    html: magicLinkHTML({ link, otp, ttl, company, product }),
+    html: magicLinkHTML({ link, otp, ttl, company, product, supportEmail }),
   }
   return sendMail({
     from: sender,
     to: user,
-    subject: `${product} (${company}) Login`,
+    subject: `${capitalizeFirstLetter(product)} (${company}) Login`,
     ...message,
   })
 }
