@@ -117,10 +117,13 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   // get user WL info
   const { rows = [] } = await getUserWL(user)
 
-  const DEFAULT_SENDER = 'dev@eqworks.com'
+  const DEFAULT_EMAIL = 'dev@eqworks.com'
   const productSender = product === PRODUCT_CLEARLAKE 
-    ? (process.env.CLEARLAKE_SENDER || DEFAULT_SENDER)
-    : DEFAULT_SENDER
+    ? (process.env.CLEARLAKE_SENDER || DEFAULT_EMAIL)
+    : DEFAULT_EMAIL
+  const supportEmail = product === PRODUCT_CLEARLAKE
+    ? (process.env.CLEARLAKE_SUPPORT_EMAIL || DEFAULT_EMAIL)
+    : DEFAULT_EMAIL
   
   // TODO: add logo in when email template has logo
   const { sender = productSender, company = 'EQ Works' } = rows[0] || {}
@@ -162,7 +165,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
     text: otpText({ otp, ttl, company, product }),
   } : {
     text: otpText({ link, otp, ttl, company, product }),
-    html: magicLinkHTML({ link, otp, ttl, company, product }),
+    html: magicLinkHTML({ link, otp, ttl, company, product, supportEmail }),
   }
   return sendMail({
     from: sender,

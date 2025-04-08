@@ -33,6 +33,7 @@ provider:
     KEYWARDEN_VER: ${env:KEYWARDEN_VER}
     STAGE: ${opt:stage, self:provider.stage}
     CLEARLAKE_SENDER: ${env:CLEARLAKE_SENDER}
+    CLEARLAKE_SUPPORT_EMAIL: ${env:CLEARLAKE_SUPPORT_EMAIL}
     REDIS_URI:
       # cloudformation functions to form redis://<host>:<port>
       "Fn::Join": [

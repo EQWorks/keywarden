@@ -27,7 +27,7 @@ module.exports.sendMail = async message => {
   return transport.sendMail(message)
 }
 
-module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
+module.exports.magicLinkHTML = ({ link, otp, ttl, company, product, supportEmail }) => `
   <!DOCTYPE html>
   <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
   <head>
@@ -298,7 +298,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product }) => `
           <tr>
             <td style="padding: 5px; font-family: sans-serif; font-size: 12px; line-height: 15px; text-align: center; color: #888888;">
               <hr>
-              <p>Having an issue? <a style="color: #6BA4F8;" href="mailto:dev@eqworks.com?subject=${product[0].toUpperCase() + product.slice(1).toLowerCase()} (${company}) Login issue">Contact Us</a></p>
+              <p>Having an issue? <a style="color: #6BA4F8;" href="mailto:${supportEmail}?subject=${product[0].toUpperCase() + product.slice(1).toLowerCase()} (${company}) Login issue">Contact Us</a></p>
             </td>
           </tr>
         </table>
