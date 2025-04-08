@@ -127,8 +127,9 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
     : DEFAULT_EMAIL
   
   // TODO: add logo in when email template has logo
-  const { sender = productSender, company = 'EQ Works' } = rows[0] || {}
-
+  let { sender, company } = rows[0] || {}
+  sender = sender || productSender
+  company = company || 'EQ Works'
   const { prefix: userPrefix, api_access } = await getUserInfo({ email: user })
   // Check if user has access to the requested product
   if (api_access.version === 2 && userPrefix !== PREFIX_DEV) {
