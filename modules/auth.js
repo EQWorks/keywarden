@@ -13,6 +13,7 @@ const { updateUser, selectUser, getUserWL } = require('./db')
 const { claimOTP, redeemOTP } = require('./auth-otp')
 const { AuthorizationError, APIError, LOG_LEVEL_ERROR } = require('./errors')
 const { PREFIX_APP_REVIEWER, PREFIX_DEV, PREFIX_MOBILE_SDK, PRODUCT_ATOM, PRODUCT_LOCUS, PRODUCT_CLEARLAKE } = require('../constants.js')
+const { capitalizeFirstLetter } = require('./utils')
 
 
 const {
@@ -170,7 +171,7 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   return sendMail({
     from: sender,
     to: user,
-    subject: `${product[0].toUpperCase() + product.slice(1).toLowerCase()} (${company}) Login`,
+    subject: `${capitalizeFirstLetter(product)} (${company}) Login`,
     ...message,
   })
 }

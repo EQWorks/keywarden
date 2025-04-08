@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer')
 const AWS = require('@aws-sdk/client-ses')
+const { capitalizeFirstLetter } = require('./utils')
 
 
 module.exports.sendMail = async message => {
@@ -35,7 +36,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product, supportEmail
     <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
     <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
-    <title></title> <!-- The title tag shows in email notifications, like Android 4.4. -->
+    <title>${capitalizeFirstLetter(product)} (${company}) Login Magic Link</title> <!-- The title tag shows in email notifications, like Android 4.4. -->
 
     <!-- Web Font / @font-face : BEGIN -->
     <!-- NOTE: If web fonts are not required, lines 10 - 27 can be safely removed. -->
@@ -228,7 +229,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product, supportEmail
 
       <!-- Visually Hidden Preheader Text : BEGIN -->
       <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
-        ${product[0].toUpperCase() + product.slice(1).toLowerCase()} (${company}) Login Magic Link
+        ${capitalizeFirstLetter(product)} (${company}) Login Magic Link
       </div>
       <!-- Visually Hidden Preheader Text : END -->
 
@@ -259,7 +260,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product, supportEmail
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="padding: 10px; font-family: sans-serif; font-size: 15px; line-height: 20px; color: #555555; text-align: center;">
-                    <h1 style="margin: 0 0 10px 0; font-family: sans-serif; font-size: 25px; line-height: 30px; color: #333333; font-weight: normal;">Welcome to ${product[0].toUpperCase() + product.slice(1).toLowerCase()} (${company})</h1>
+                    <h1 style="margin: 0 0 10px 0; font-family: sans-serif; font-size: 25px; line-height: 30px; color: #333333; font-weight: normal;">Welcome to ${capitalizeFirstLetter(product)} (${company})</h1>
                   </td>
                 </tr>
                 <tr>
@@ -298,7 +299,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product, supportEmail
           <tr>
             <td style="padding: 5px; font-family: sans-serif; font-size: 12px; line-height: 15px; text-align: center; color: #888888;">
               <hr>
-              <p>Having an issue? <a style="color: #6BA4F8;" href="mailto:${supportEmail}?subject=${product[0].toUpperCase() + product.slice(1).toLowerCase()} (${company}) Login issue">Contact Us</a></p>
+              <p>Having an issue? <a style="color: #6BA4F8;" href="mailto:${supportEmail}?subject=${capitalizeFirstLetter(product)} (${company}) Login issue">Contact Us</a></p>
             </td>
           </tr>
         </table>
@@ -321,7 +322,7 @@ module.exports.magicLinkHTML = ({ link, otp, ttl, company, product, supportEmail
 `
 
 module.exports.otpText = ({ link, otp, ttl, company, product }) => `
-  Welcome to ${product[0].toUpperCase() + product.slice(1).toLowerCase()} (${company})\n
+  Welcome to ${capitalizeFirstLetter(product)} (${company})\n
   ${link ? `Please login with the magic link ${link}\n` : ''}
   ${otp && ttl ? `Or manually enter: ${otp} \n
   This will expire after ${ttl}, and all previous email should be discarded.` : ''}
