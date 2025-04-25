@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS public.equsers (
     info JSONB DEFAULT '{}'::JSONB,
     otp JSONB DEFAULT '{}'::JSONB,
     active BIT(1) DEFAULT B'1'::BIT(1),
+    access JSONB,
+    access_expired_at TIMESTAMPTZ,
     PRIMARY KEY(email)
 );
 
