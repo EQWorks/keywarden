@@ -46,7 +46,7 @@ const isPrivilegedUser = (email, prefix, api_access) => {
 
 const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
   // returns user info
-  const selects = ['prefix', 'jwt_uuid', 'client', 'access', 'info', PRODUCT_ATOM, PRODUCT_LOCUS]
+  const selects = ['prefix', 'jwt_uuid', 'client', 'access', 'info', PRODUCT_ATOM, PRODUCT_LOCUS, 'access_expired_at']
   const conditions = ["active = B'1'"]
   const user = await selectUser({ email, selects, conditions })
 
@@ -55,6 +55,20 @@ const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
       message: `User ${email} not found`,
       statusCode: 404,
     })
+  }
+  const now = new Date()
+  if (user.access_expired_at && new Date(user.access_expired_at) < now) {
+    await updateUser({ 
+      email,
+      prefix: 'customers',
+      jwt_uuid: null,
+      client: null,
+      atom: { read: 10, write: 0 },
+      active: 0,
+      access: null,
+      access_expired_at: null,
+    })
+    throw new AuthorizationError(`Access for ${email} has expired. Please contact the administrator to reactivate this account.`)
   }
 
   // product access (read/write) falls back to 'atom' access if empty object
@@ -83,12 +97,13 @@ const getUserInfo = async ({ email, product = PRODUCT_ATOM }) => {
       // v2 could override per-WL policies (e.g.: { wl { cu: -1|[...], policies: [...] } } })
       // v3 could override per-CU policies (e.g.: { wl: { cu: { policies: [...] } } })
     },
+    access_expired_at: user.access_expired_at,
   }
 }
 
 // Trade OTP for user access
 const redeemAccess = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM }) => {
-  let { prefix, api_access = {}, jwt_uuid } = await getUserInfo({ email, product })
+  let { prefix, api_access = {}, jwt_uuid, access_expired_at } = await getUserInfo({ email, product })
 
   if (prefix === PREFIX_APP_REVIEWER) {
     if (otp !== APP_REVIEWER_OTP) {
@@ -104,7 +119,7 @@ const redeemAccess = async ({ email, otp, reset_uuid = false, product = PRODUCT_
     await updateUser({ email, jwt_uuid })
   }
 
-  return { api_access, jwt_uuid, prefix }
+  return { api_access, jwt_uuid, prefix, access_expired_at }
 }
 
 const _resetUUID = async ({ email }) => {
@@ -177,7 +192,17 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   })
 }
 
-const computeExpiry = (timeout, isPrivilegedUser) => {
+const computeExpiry = (timeout, isPrivilegedUser, access_expired_at) => {
+  const now = Date.now()
+  if (access_expired_at) {
+    const expiryTime = new Date(access_expired_at).getTime()
+    const timeRemaining = Math.floor((expiryTime - now) / 1000)
+    if (timeRemaining <= 0) {
+      throw new AuthorizationError('Access has expired')
+    }
+    return Math.min(JWT_TTL, timeRemaining)
+  }
+
   let expiry = timeout
 
   // default timeout
@@ -199,9 +224,9 @@ const computeExpiry = (timeout, isPrivilegedUser) => {
   return expiry
 }
 
-const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeout, secret = JWT_SECRET, future_access } = {}) => {
+const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product, access_expired_at = null }, { timeout, secret = JWT_SECRET, future_access } = {}) => {
   // timeout in seconds
-  const expiresIn = computeExpiry(timeout, isPrivilegedUser(email, prefix, api_access))
+  const expiresIn = computeExpiry(timeout, isPrivilegedUser(email, prefix, api_access), access_expired_at)
 
   // TODO: remove `product` from JWT when v1 `access` is stable/universal
   const toSign = { email, api_access, jwt_uuid, prefix, product }
@@ -214,7 +239,7 @@ const signJWT = ({ email, api_access = {}, jwt_uuid, prefix, product }, { timeou
 
 // verify user OTP and sign JWT on success
 const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATOM, timeout, future_access }) => {
-  const { api_access, jwt_uuid, prefix } = await redeemAccess({
+  const { api_access, jwt_uuid, prefix, access_expired_at } = await redeemAccess({
     email,
     otp,
     reset_uuid,
@@ -222,7 +247,7 @@ const verifyOTP = async ({ email, otp, reset_uuid = false, product = PRODUCT_ATO
   })
 
   return {
-    token: signJWT({ email, api_access, jwt_uuid, prefix, product }, { timeout, future_access }),
+    token: signJWT({ email, api_access, jwt_uuid, prefix, product, access_expired_at }, { timeout, future_access }),
     api_access,
     prefix,
     product,
@@ -295,11 +320,11 @@ const getUserAccess = async ({ token, light, reset_uuid, targetProduct, forceLig
     
   }
   // confirm against DB user data and return the DB version (for v1+ `access` system)
-  user = await confirmUser({
+  const userDB = await confirmUser({
     ...user,
     reset_uuid: ['1', 'true'].includes((reset_uuid || '').toLowerCase()),
   })
-  return { ...user, light: false }
+  return { ...user, ...userDB, light: false }
 }
 
 module.exports = {

@@ -58,7 +58,7 @@ const _prepareConditions = ({ prefix, api_access, product = PRODUCT_ATOM, active
   return conditions
 }
 
-const BASE_SELECTS = ['email', 'prefix', 'client', 'info', 'access', 'active']
+const BASE_SELECTS = ['email', 'prefix', 'client', 'info', 'access', 'active', 'access_expired_at']
 // list users that the given user (email) has access to
 const getUsers = ({ prefix, api_access, product = PRODUCT_ATOM, active, deleted }) => {
   if (api_access.version) {
@@ -135,6 +135,7 @@ const removeUser = ({ userInfo, prefix, api_access }) => {
     atom: { read: 10, write: 0 },
     active: 0,
     access: null,
+    access_expired_at: null,
   })
 }
 
