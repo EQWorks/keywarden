@@ -17,7 +17,10 @@ const _checkEmpty = ({ ...params }) => {
   }
 }
 
+const _normalizeEmail = (email) => email.trim().toLowerCase()
+
 const selectUser = async ({ email, selects, conditions = [] }) => {
+  email = _normalizeEmail(email)
   // returns user data, or undefined if user not found
   _checkEmpty({ email })
   const { rows = [] } = await rPool.query(`
@@ -40,6 +43,7 @@ const listUsers = async ({ selects, conditions }) => {
 }
 
 const insertUser = async ({ email, ...props }) => {
+  email = _normalizeEmail(email)
   _checkEmpty({ email })
   const entries = Object.entries({ email, ...props })
   try {
@@ -60,6 +64,7 @@ const insertUser = async ({ email, ...props }) => {
 
 // resolves to 1 if update successful
 const updateUser = async ({ email, ...updates }) => {
+  email = _normalizeEmail(email)
   _checkEmpty({ email })
   const entries = Object.entries(updates)
   return await wPool.transaction(async (query) => {
@@ -82,21 +87,27 @@ const updateUser = async ({ email, ...updates }) => {
 
 }
 
-const deleteUser = (email) => wPool.query(`
-  DELETE FROM equsers
-  WHERE email = $1;
-`, [email])
+const deleteUser = (email) => {
+  email = _normalizeEmail(email)
+  return wPool.query(`
+    DELETE FROM equsers
+    WHERE email = $1;
+  `, [email])
+}
 
-const getUserWL = (email) => rPool.query(`
-  SELECT
-    wl.logo,
-    wl.sender,
-    wl.company
-  FROM whitelabel AS wl
-  INNER JOIN equsers AS u
-    ON u.client->'wl'->(0) = wl.whitelabelid::text::jsonb
-  WHERE u.email = $1;
-`, [email])
+const getUserWL = (email) => {
+  email = _normalizeEmail(email)
+  return rPool.query(`
+    SELECT
+      wl.logo,
+      wl.sender,
+      wl.company
+    FROM whitelabel AS wl
+    INNER JOIN equsers AS u
+      ON u.client->'wl'->(0) = wl.whitelabelid::text::jsonb
+    WHERE u.email = $1;
+  `, [email])
+}
 
 module.exports = {
   selectUser,

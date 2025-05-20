@@ -24,6 +24,7 @@ router.get('/', (_, res) => {
 router.get('/login', hasQueryParams('user'), async (req, res, next) => {
   try {
     const { user, redirect, zone, product = PRODUCT_ATOM, nolink } = req.query
+    const normalizedEmail = user.trim().toLowerCase()
     const { STAGE = 'dev' } = process.env
     let origin = `${req.protocol}://${req.get('host')}`
     if (STAGE) {
@@ -31,7 +32,7 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
     }
     // login user and send OTP email
     const deliveryInfo = await loginUser({
-      user,
+      user: normalizedEmail,
       redirect: decodeURIComponent(redirect || `${origin}/verify`),
       zone: decodeURIComponent(zone || 'utc'),
       product: product.toLowerCase(),
@@ -49,8 +50,8 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
       })
     }
     return res.json({
-      message: `Login passcode sent to ${user} through email`,
-      user,
+      message: `Login passcode sent to ${normalizedEmail} through email`,
+      user: normalizedEmail,
     })
   } catch (err) {
     if (err instanceof APIError) {
@@ -64,8 +65,9 @@ router.get('/login', hasQueryParams('user'), async (req, res, next) => {
 router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
   try {
     const { user: email, otp, reset_uuid, product = PRODUCT_ATOM, timeout, future_access } = req.query
+    const normalizedEmail = email.trim().toLowerCase()
     const { token, api_access, prefix, product: jwtProduct } = await verifyOTP({
-      email,
+      email: normalizedEmail,
       otp,
       reset_uuid: ['1', 'true'].includes(reset_uuid),
       product: product.toLowerCase(),
@@ -73,9 +75,9 @@ router.get('/verify', hasQueryParams('user', 'otp'), async (req, res, next) => {
       future_access: ['1', 'true'].includes(future_access),
     })
     return res.json({
-      message: `User ${email} verified, please store and use the token responsibly`,
-      email,
-      user: email, // for consistency with other routes
+      message: `User ${normalizedEmail} verified, please store and use the token responsibly`,
+      email: normalizedEmail,
+      user: normalizedEmail, // for consistency with other routes
       token,
       product: jwtProduct,
       access: {
