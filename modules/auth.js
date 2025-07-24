@@ -32,7 +32,7 @@ const isPrivilegedUser = (email, prefix, api_access) => {
   switch(prefix) {
   case PREFIX_DEV:
     return Object.entries(api_access).every(([k, v]) => {
-      if (k === 'version') {
+      if (['version', 'policies', 'info'].includes(k)) {
         return true
       }
       return v === -1
