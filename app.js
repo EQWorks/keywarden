@@ -2,18 +2,18 @@ const serverless = require('serverless-http')
 const express = require('express')
 const cors = require('cors')
 
-const { sentry, errorHandler } = require('./modules/errors')
+const { initSentry, setupSentryErrorHandler, errorHandler } = require('./modules/errors')
 const { rKillIdleOnExit, wKillIdleOnExit } = require('./modules/db')
 
 const api = require('./api')
+
+// initialize Sentry before express app
+initSentry()
 
 // express app
 const app = express()
 // trust proxy to get API Gateway/Cloud Front forwarded headers
 app.enable('trust proxy')
-
-// allow Sentry to access the request
-app.use(sentry().requestHandler)
 
 // enable CORS for endpoints and their pre-flight requests (when applicable)
 app.use(cors())
@@ -27,8 +27,8 @@ app.use(rKillIdleOnExit, wKillIdleOnExit)
 // mount API endpoints by stage
 app.use(`/${process.env.STAGE || 'dev'}`, api)
 
-// log all errors to Sentry
-app.use(sentry().errorHandler)
+// Sentry error handler (must be before custom error handler)
+setupSentryErrorHandler(app)
 
 // catch-all error handler
 app.use(errorHandler)

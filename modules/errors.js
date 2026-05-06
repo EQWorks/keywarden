@@ -1,50 +1,29 @@
-const _sentry = require('@sentry/node')
+const Sentry = require('@sentry/node')
 const { KEYWARDEN_VER, SENTRY_URL, STAGE = 'dev' } = process.env
 
 const LOG_LEVEL_WARNING = 'WARNING'
 const LOG_LEVEL_ERROR = 'ERROR'
 
-// IIFE to encapsulate sentry in namespace
-const sentry = (() => {
-  let sentryObj
+let sentryInitialized = false
 
-  const initSentry = () => {
-    _sentry.init({
-      debug: STAGE === 'local',
-      dsn: SENTRY_URL,
-      release: KEYWARDEN_VER,
-      environment: STAGE,
-    })
-  
-    // middleware to start monitoring request
-    const requestHandler = _sentry.Handlers.requestHandler({
-      request: ['headers', 'method', 'query_string', 'url'],
-      serverName: false,
-      user: ['email'],
-    })
-  
-    // middleware to push error to Sentry
-    const errorHandler = _sentry.Handlers.errorHandler({
-      // only log to Sentry unknown errors or errors we have categorized as 'ERROR'
-      shouldHandleError: (err) => err.logLevel === undefined || err.logLevel === LOG_LEVEL_ERROR,
-    })
-  
-    // log errors outside error handler
-    const logError = (err) => _sentry.captureException(err)
-  
-    return { client: _sentry, requestHandler, errorHandler, logError }
-  
-  }
+const initSentry = () => {
+  if (sentryInitialized) return
+  sentryInitialized = true
+  Sentry.init({
+    debug: STAGE === 'local',
+    dsn: SENTRY_URL,
+    release: KEYWARDEN_VER,
+    environment: STAGE,
+  })
+}
 
-  // returns sentryObj or call init if sentryObj has not been set
-  return () => {
-    if (sentryObj === undefined) {
-      sentryObj = initSentry()
-    }
-    return sentryObj
-  }
+const setupSentryErrorHandler = (app) => {
+  Sentry.setupExpressErrorHandler(app, {
+    shouldHandleError: (err) => err.logLevel === undefined || err.logLevel === LOG_LEVEL_ERROR,
+  })
+}
 
-})()
+const logError = (err) => Sentry.captureException(err)
 
 class APIError extends Error {
   /**
@@ -194,7 +173,9 @@ module.exports = {
   AuthorizationError,
   InternalServerError,
   CustomError,
-  sentry,
+  initSentry,
+  setupSentryErrorHandler,
+  logError,
   errorHandler,
   LOG_LEVEL_ERROR,
   LOG_LEVEL_WARNING,

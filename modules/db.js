@@ -4,10 +4,10 @@
 const isEmpty = require('lodash.isempty')
 
 const DBPool = require('./db-pool')
-const { APIError, sentry } = require('./errors')
+const { APIError, logError } = require('./errors')
 
-const rPool = new DBPool({ max: 1, host: process.env.PGHOST_READ, errorLogger: sentry().logError })
-const wPool = new DBPool({ max: 1, errorLogger: sentry().logError })
+const rPool = new DBPool({ max: 1, host: process.env.PGHOST_READ, errorLogger: logError })
+const wPool = new DBPool({ max: 1, errorLogger: logError })
 
 const _checkEmpty = ({ ...params }) => {
   for (const [ k, v ] of Object.entries(params)) {

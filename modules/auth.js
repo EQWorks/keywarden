@@ -3,7 +3,7 @@
  */
 const url = require('url')
 
-const uuidv4 = require('uuid/v4')
+const { v4: uuidv4 } = require('uuid')
 const jwt = require('jsonwebtoken')
 const moment = require('moment-timezone')
 const isEqual = require('lodash.isequal')
