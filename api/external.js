@@ -21,7 +21,7 @@ router.get('/readme', (req, res, next) => {
 
     // `isReadOnly` is used for readme.io's access control
     const user = { email, name: email, prefix, isReadOnly: true, ...client }
-    const link = `https://docs.locus.place/v1.0?auth_token=${signJWT(user, README_LOCUS_SECRET)}`
+    const link = `https://docs.locus.place/v1.0?auth_token=${signJWT(user, { secret: README_LOCUS_SECRET })}`
     return res.status(200).json({ message: 'Login link generated', link })
   }).catch(next)
 })

@@ -2,7 +2,15 @@ const crypto = require('crypto')
 const Redis = require('ioredis')
 const { AuthorizationError } = require('./errors')
 
-const redisClient = new Redis(process.env.REDIS_URI)
+const redisClient = new Redis(process.env.REDIS_URI, {
+  maxRetriesPerRequest: 3,
+  retryStrategy(times) {
+    return Math.min(times * 200, 2000)
+  },
+})
+redisClient.on('error', (err) => {
+  console.error('[ioredis] connection error:', err.message)
+})
 
 // gets key or sets value if does not exist + sets/resets ttl (when ttl args provided)
 redisClient.defineCommand('getOrSet', {

@@ -1,9 +1,8 @@
 /**
  * User auth workflow
  */
-const url = require('url')
 
-const uuidv4 = require('uuid/v4')
+const { v4: uuidv4 } = require('uuid')
 const jwt = require('jsonwebtoken')
 const moment = require('moment-timezone')
 const isEqual = require('lodash.isequal')
@@ -20,8 +19,15 @@ const {
   OTP_TTL = 5 * 60 * 1000, // in milliseconds
   JWT_SECRET,
   JWT_TTL = 90 * 24 * 60 * 60, // in seconds
-  APP_REVIEWER_OTP = '*'.charCodeAt(0).toString(2),
+  APP_REVIEWER_OTP,
 } = process.env
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required')
+}
+if (!APP_REVIEWER_OTP) {
+  throw new Error('APP_REVIEWER_OTP environment variable is required')
+}
 
 const isPrivilegedUser = (email, prefix, api_access) => {
   // returns true if this user is high-privilege
@@ -167,15 +173,12 @@ const loginUser = async ({ user, redirect, zone='utc', product = PRODUCT_ATOM, n
   // localize TTL
   ttl = moment.tz(ttl, zone).format('LLLL z')
 
-  // parse given redirect
-  let link = url.parse(redirect, true)
-  // inject query string params
-  link.query = link.query || {}
-  Object.assign(link.query, { user, otp, product })
-  // hack to enable link.query over ?search
-  link.search = undefined
-  // reconstruct into the effective magic link
-  link = url.format(link)
+  // build magic link from redirect URL
+  const linkUrl = new URL(redirect)
+  linkUrl.searchParams.set('user', user)
+  linkUrl.searchParams.set('otp', otp)
+  linkUrl.searchParams.set('product', product)
+  let link = linkUrl.toString()
 
   // populate email
   const message = nolink ? {

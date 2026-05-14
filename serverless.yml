@@ -15,7 +15,7 @@ custom:
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   timeout: 29
   memorySize: 256
   versionFunctions: false
@@ -32,6 +32,7 @@ provider:
     OTP_TTL: ${env:OTP_TTL}
     KEYWARDEN_VER: ${env:KEYWARDEN_VER}
     STAGE: ${opt:stage, self:provider.stage}
+    APP_REVIEWER_OTP: ${env:APP_REVIEWER_OTP}
     CLEARLAKE_SENDER: ${env:CLEARLAKE_SENDER}
     CLEARLAKE_SUPPORT_EMAIL: ${env:CLEARLAKE_SUPPORT_EMAIL}
     REDIS_URI:
@@ -49,18 +50,18 @@ provider:
           ]
         ]
       ]
-  vpc: # vpc-70658509 | EQ-DC-Tunnel
+  vpc:
     securityGroupIds:
-      - sg-081b437d # api-gateway-dc
+      - ${env:VPC_SG_API_GATEWAY}
     subnetIds:
-      - subnet-b59ae9fe # EQ-DC-Lambda Public 1A
-      - subnet-df12bb82 # EQ-DC-Lambda Public 1B
+      - ${env:VPC_SUBNET_1}
+      - ${env:VPC_SUBNET_2}
   iamRoleStatements:
     - Effect: Allow
       Action:
         - ses:SendEmail
         - ses:SendRawEmail
-      Resource: arn:aws:ses:us-east-1:175398475102:*
+      Resource: arn:aws:ses:${env:AWS_REGION}:${env:AWS_ACCOUNT_ID}:*
 
 functions:
   app:
@@ -83,7 +84,6 @@ functions:
 
 resources:
   Resources:
-    # redis resource configured through cloudformation, without explicit manual work
     KeywardenRedisCluster:
       Type: AWS::ElastiCache::CacheCluster
       Properties:
@@ -92,7 +92,6 @@ resources:
         CacheNodeType: cache.t2.micro
         Engine: redis
         NumCacheNodes: 1
-        # this equates to the provider.vpc.subnetIds
-        CacheSubnetGroupName: redis-public-lambda
+        CacheSubnetGroupName: ${env:REDIS_SUBNET_GROUP}
         VpcSecurityGroupIds:
-          - sg-52345126
+          - ${env:REDIS_SG}

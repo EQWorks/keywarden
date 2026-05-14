@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer')
-const AWS = require('@aws-sdk/client-ses')
+const { SES } = require('@aws-sdk/client-ses')
 const { capitalizeFirstLetter } = require('./utils')
 
 
@@ -21,9 +21,8 @@ module.exports.sendMail = async message => {
     })
   }
   else {
-    transport = nodemailer.createTransport({
-      SES: new AWS.SES(),
-    })
+    const ses = new SES()
+    transport = nodemailer.createTransport({ SES: { ses, aws: { SendRawEmailCommand: require('@aws-sdk/client-ses').SendRawEmailCommand } } })
   }
   return transport.sendMail(message)
 }
